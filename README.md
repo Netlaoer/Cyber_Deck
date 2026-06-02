@@ -61,34 +61,7 @@ Fuyutsui/
 ├── main.lua              # 事件处理函数 + OnUpdate 帧循环（1723行）
 ├── gui.lua               # Ace3 配置界面（/fu gui 像素块调试/查看）
 │
-└── Fuyutsui/             # Python 决策层
-    ├── logic_gui_laoer.py  # 主 GUI 入口（赛博朋克风格，按键检测+逻辑调度+状态显示）
-    ├── logic_gui.py        # 备用 GUI 入口（简洁风格）
-    ├── utils.py            # 核心工具库
-    ├── GetPixels.py        # 屏幕像素扫描引擎
-    ├── config.yml          # 像素块配置（state/spells/groups/auras 定义）
-    ├── keymap.yml          # 默认按键映射
-    ├── keymap/             # 按职业分目录的按键映射
-    │
-    ├── class/              # 职业逻辑模块（12个职业）
-    │   ├── paladin_logic.py   # 圣骑士（三系）
-    │   ├── priest_logic.py    # 牧师（三系）
-    │   ├── deathknight_logic.py
-    │   ├── druid_logic.py
-    │   ├── shaman_logic.py
-    │   ├── monk_logic.py
-    │   ├── evoker_logic.py
-    │   ├── mage_logic.py
-    │   ├── warlock_logic.py
-    │   ├── demonhunter_logic.py
-    │   ├── hunter_logic.py
-    │   ├── rogue_logic.py
-    │   └── warrior_logic.py
-    │
-    └── other/              # 调试工具
-        ├── GetInfo.py
-        ├── GetRGB.py
-        └── hex_to_decode.py
+└── Fuyutsui/             # Python 决策层（已移至 FuyutsuiTools/Fuyutsui/）
 ```
 
 ### FuyutsuiTools（扩展插件）
@@ -98,7 +71,7 @@ FuyutsuiTools/
 ├── FuyutsuiTools.toc     # 依赖 Fuyutsui
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
 ├── main.lua              # 覆盖 OnUpdate，血量高频轮询（0.2秒，团本除外）
-├── logic_gui_laoer.py    # 独立 GUI 入口（需放入主插件 Fuyutsui/Fuyutsui/ 目录使用）
+├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Fuyutsui/ 子目录）
 ├── README.md             # 项目说明
 │
 ├── core/
@@ -109,15 +82,28 @@ FuyutsuiTools/
 ├── class/
 │   └── Paladin.lua       # 神圣专精添加"驱散开关"像素块
 │
-├── iMorph/               # 预留空目录
+├── Fuyutsui/             # Python 主工具
+│   ├── logic_gui.py      # 备用 GUI 入口
+│   ├── utils.py          # 核心工具库
+│   ├── GetPixels.py      # 屏幕像素扫描引擎
+│   ├── config.yml        # 像素块配置（state/spells/groups 定义）
+│   ├── class/            # 职业逻辑模块（13个职业）
+│   ├── keymap/           # 按键映射（13个职业）
+│   └── other/            # 调试工具 + icon.ico
 │
-└── Fuyutsui/             # Python 覆盖层
-    ├── overrides.py      # config 深度合并 + 职业逻辑模块覆盖加载
-    └── class/
-        └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 制裁之锤固定按键）
+├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
+│   ├── overrides.py      # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
+│   ├── config.yml        # 覆盖配置
+│   ├── class/
+│   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 制裁之锤固定按键）
+│   └── keymap/
+│       └── paladin.yml   # 圣骑士扩展键位
+│
+└── pack/                 # 打包工具
+    ├── 打包exe.bat / 打包exe.py
 ```
 
-> **注意**：`logic_gui_laoer.py` 不是放在 FuyutsuiTools 目录运行，而是复制到主插件 `Fuyutsui/Fuyutsui/` 下替换原版 GUI 入口。
+> **注意**：`logic_gui_Tools.py` 是根目录入口，运行时自动将 `Fuyutsui/` 加入 sys.path 并加载其中所有模块。覆盖模块（`laoer/`）通过同级目录扫描自动检测，无需手动配置。
 
 ---
 
@@ -143,12 +129,15 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 
 ### Python 端
 
-`logic_gui_laoer.py` 是入口，启动时：
-1. `from utils import *` — 加载工具库
-2. `from GetPixels import get_info, scan_screen_data` — 加载扫描引擎
-3. 检测 `../FuyutsuiTools/Fuyutsui/overrides.py`，存在则 `apply_overrides()` — monkey-patch
-4. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
-5. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
+`logic_gui_Tools.py` 是根目录入口，启动时：
+1. 将 `Fuyutsui/` 子目录加入 `sys.path`，确保 `utils`、`GetPixels`、`class` 模块可导入
+2. `from utils import *` — 加载工具库（config.yml、keymap、按键发送、单位查询）
+3. `from GetPixels import get_info, scan_screen_data` — 加载屏幕扫描引擎
+4. 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
+5. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
+6. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
+
+> 覆盖模块（`laoer/`）通过扫描 `Path(__file__).parent` 下的同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `FUYUTSUI_TOOLS_PATH` 手动指定路径。
 
 ---
 
@@ -402,7 +391,7 @@ char = { level, aoeMode(0=自动/1=单体), cooldowns(爆发), dpsMode(0=官方�
 
 ## 七、Python 端核心机制
 
-### logic_gui_laoer.py — 主 GUI + 调度核心（1431 行）
+### logic_gui_Tools.py — 主 GUI + 调度核心（根目录入口）
 
 **全局变量**：
 - `_logic_modules` — 模块缓存 dict
@@ -489,10 +478,10 @@ char = { level, aoeMode(0=自动/1=单体), cooldowns(爆发), dpsMode(0=官方�
 | `find_wow_hwnd()` | 查找 WoW 窗口句柄 |
 
 **按键映射优先级**（高→低）：
-1. FuyutsuiTools 的 `keymap.yml`
-2. FuyutsuiTools 的 `keymap/<className>/` 目录
-3. Fuyutsui 的 `keymap.yml`
-4. Fuyutsui 的 `keymap/<className>/` 目录
+1. `laoer/keymap/<职业>/` 覆盖目录
+2. `Fuyutsui/keymap/<职业>/` 主目录
+3. `laoer/config.yml` 覆盖合并
+4. `Fuyutsui/config.yml` 基座配置
 
 ### 职业逻辑模块统一接口
 
@@ -626,8 +615,8 @@ FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖�
 
 | 文件 | 覆盖内容 |
 |------|---------|
-| `overrides.py` | config 深度合并 + keymap 合并 + 模块覆盖加载 |
-| `class/paladin_logic.py` | 驱散开关（临时移除驱散字段）+ 制裁之锤固定按键 |
+| `laoer/overrides.py` | config 深度合并 + keymap 合并 + 模块覆盖加载 |
+| `laoer/class/paladin_logic.py` | 驱散开关（临时移除驱散字段）+ 制裁之锤固定按键 |
 
 ---
 
@@ -643,7 +632,7 @@ FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
 - `core/quickbutton.lua`：四按钮面板中添加"驱散"按钮
 
 ### Python 端（决策拦截）
-- `FuyutsuiTools/Fuyutsui/class/paladin_logic.py`：
+- `laoer/class/paladin_logic.py`：
   - 覆盖 `run_paladin_logic`
   - 驱散开关关闭时，**调用前**临时移除 `group` 中所有单位的 `"驱散"` 字段
   - 原始逻辑中 `get_unit_with_dispel_type()` 找不到可驱散单位 → `elif` 链自然跳过队友驱散
@@ -713,8 +702,8 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ### FuyutsuiTools 端（可选）
 
-1. 创建 `FuyutsuiTools/class/NewClass.lua` 扩展像素块
-2. 创建 `FuyutsuiTools/Fuyutsui/class/newclass_logic.py` 覆盖逻辑
+1. 创建 `class/NewClass.lua` 扩展像素块
+2. 创建 `laoer/class/newclass_logic.py` 覆盖逻辑
 
 ---
 

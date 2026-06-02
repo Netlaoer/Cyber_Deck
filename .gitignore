@@ -2,10 +2,10 @@
 .vscode/
 .claude/
 
-# 忽略 Python 的缓存文件
-Fuyutsui/__pycache__/
+# 忽略 Python 虚拟环境和缓存
+.venv/
 *.pyc
 
-# 忽略.md
-README.md
-/iMorph
+# 忽略文件
+pack/.build_key
+logic_gui_Tools.py
