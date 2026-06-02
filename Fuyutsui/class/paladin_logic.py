@@ -35,31 +35,7 @@ def run_paladin_logic(state_dict, spec_name):
                 removed_dispel[key] = data["驱散"]
                 del data["驱散"]
 
-    # 覆盖：Holy进攻技能仅在目标是友方时不判断（配合[@targettarget]）
-    # 目标类型>=11为友方, 1-3为敌方, 0为无目标
-    orig_目标类型 = state_dict.get("目标类型", 0)
-    if spec_name == "神圣" and orig_目标类型 >= 11:
-        state_dict["目标类型"] = 2
-
-    # 覆盖：5豆正义盾击用5码姓名版敌人判断代替目标距离
-    orig_目标距离 = None
-    if spec_name == "神圣" and state_dict.get("神圣能量", 0) == 5:
-        if state_dict.get("5码敌人", 0) >= 1:
-            orig_目标距离 = state_dict.get("目标距离")
-            state_dict["目标距离"] = 1
-        else:
-            # 阻止其他条件也调整目标距离，这里先不处理，让原判断自然失败
-            pass
-
     action_hotkey, current_step, unit_info = _orig_run(state_dict, spec_name)
-
-    # 恢复目标距离
-    if orig_目标距离 is not None:
-        state_dict["目标距离"] = orig_目标距离
-
-    # 恢复被覆盖的目标类型
-    if orig_目标类型 != state_dict.get("目标类型", 0):
-        state_dict["目标类型"] = orig_目标类型
 
     # 恢复被移除的驱散字段
     if removed_dispel:
