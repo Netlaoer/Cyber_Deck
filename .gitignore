@@ -5,7 +5,10 @@
 # 忽略 Python 虚拟环境和缓存
 .venv/
 *.pyc
-
+__pycache__/
 # 忽略文件
+gui_window_state.json
+.runtime_tmp/
+# 忽略敏感文件
 pack/.build_key
 logic_gui_Tools.py

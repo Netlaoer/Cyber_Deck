@@ -158,7 +158,7 @@ def show_result():
     
     print("⚠️  重要提示：")
     print("   打包完成后不会自动运行exe")
-    print("   请手动到 dist 目录双击运行 赛博义肢.exe")
+    print("   请手动双击运行项目根目录的 Cyber_Deck.exe")
     print()
 
 def main():

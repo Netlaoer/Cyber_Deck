@@ -82,7 +82,7 @@ FuyutsuiTools/
 ├── class/
 │   └── Paladin.lua       # 神圣专精添加"驱散开关"像素块
 │
-├── Fuyutsui/             # Python 主工具
+├── Fuyutsui/             # Python 主工具（原主插件内的"请将我放到其他文件夹并重命名"目录，移动至此）
 │   ├── logic_gui.py      # 备用 GUI 入口
 │   ├── utils.py          # 核心工具库
 │   ├── GetPixels.py      # 屏幕像素扫描引擎
