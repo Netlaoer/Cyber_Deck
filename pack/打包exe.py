@@ -7,6 +7,7 @@ import os
 import sys
 import shutil
 import subprocess
+import secrets
 import time
 from pathlib import Path
 
@@ -82,7 +83,12 @@ def build_exe():
     
     # 设置环境变量，阻止打包过程中误启动 GUI
     os.environ['CYBER_LIMB_BUILDING'] = '1'
-    
+
+    # 生成随机加密密钥（每次打包不同）
+    build_key = secrets.token_hex(8)
+    with open("pack/.build_key", "w") as f:
+        f.write(build_key)
+
     # PyInstaller命令参数
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -94,6 +100,7 @@ def build_exe():
         "--paths", "Fuyutsui",  # 添加子目录到搜索路径，使 PyInstaller 能找到 utils/GetPixels/class
         "--distpath", ".",  # 输出到项目根目录
         "--workpath", "pack/build",  # 构建缓存目录
+        "--key=" + build_key,  # 每次打包随机 AES 密钥
         "--icon=laoer/other/icon.ico",  # exe图标
         "--exclude-module=matplotlib",
         "--exclude-module=numpy",

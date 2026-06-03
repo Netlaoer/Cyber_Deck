@@ -53,8 +53,17 @@ echo.
 REM 设置环境变量，阻止打包过程中误启动 GUI
 set "CYBER_LIMB_BUILDING=1"
 
-REM 读取打包密码
-set /p BUILD_KEY=<pack\.build_key
+REM 生成随机加密密钥（每次打包不同）
+set "CHARS=abcdefghijklmnopqrstuvwxyz0123456789"
+set "BUILD_KEY="
+for /l %%i in (1,1,16) do call :genkey
+goto :pkg_start
+:genkey
+set /a R=%random% %% 36
+call set "BUILD_KEY=%BUILD_KEY%%%CHARS:~%R%,1%%"
+goto :eof
+:pkg_start
+echo %BUILD_KEY%>pack\.build_key
 
 REM 执行PyInstaller打包
 .venv\Scripts\python -m PyInstaller --clean --onefile --noconsole --name="Cyber_Deck" --noconfirm ^
