@@ -70,7 +70,7 @@ Fuyutsui/
 FuyutsuiTools/
 ├── FuyutsuiTools.toc     # 依赖 Fuyutsui
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
-├── main.lua              # 覆盖 OnUpdate，血量高频轮询（0.2秒，团本除外）
+├── main.lua              # 覆盖 OnUpdate（已由主插件接管，存量文件）
 ├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Fuyutsui/ 子目录）
 ├── README.md             # 项目说明
 │
@@ -89,21 +89,22 @@ FuyutsuiTools/
 │   ├── config.yml        # 像素块配置（state/spells/groups 定义）
 │   ├── class/            # 职业逻辑模块（13个职业）
 │   ├── keymap/           # 按键映射（13个职业）
-│   └── other/            # 调试工具 + icon.ico
+│   └── other/            # 调试工具
 │
 ├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
 │   ├── overrides.py      # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
 │   ├── config.yml        # 覆盖配置
 │   ├── class/
 │   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 制裁之锤固定按键）
-│   └── keymap/
-│       └── paladin.yml   # 圣骑士扩展键位
+│   ├── keymap/
+│   │   └── paladin.yml   # 圣骑士扩展键位
+│   └── other/
+│       └── icon.ico      # exe 图标
 │
-└── pack/                 # 打包工具
-    ├── 打包exe.bat / 打包exe.py
+└── pack/                 # 打包工具（开发者用）
 ```
 
-> **注意**：`logic_gui_Tools.py` 是根目录入口，运行时自动将 `Fuyutsui/` 加入 sys.path 并加载其中所有模块。覆盖模块（`laoer/`）通过同级目录扫描自动检测，无需手动配置。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 运行时将 `Fuyutsui/` 加入 sys.path 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
 
 ---
 
@@ -121,7 +122,7 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 
 **FuyutsuiTools 加载顺序**（在 Fuyutsui 之后）：
 1. `init.lua` — 覆盖 OnEnable
-2. `main.lua` — 覆盖 OnUpdate
+2. `main.lua` — 覆盖 OnUpdate（已退化为注释，功能由主插件接管）
 3. `core\core.lua` — 驱散开关
 4. `class\Paladin.lua` — 圣骑士数据块扩展
 5. `core\config.lua` — 占位
@@ -129,15 +130,16 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 
 ### Python 端
 
-`logic_gui_Tools.py` 是根目录入口，启动时：
+`Cyber_Deck.exe` 是打包后的主程序入口，启动时（对应源代码 `logic_gui_Tools.py`）：
 1. 将 `Fuyutsui/` 子目录加入 `sys.path`，确保 `utils`、`GetPixels`、`class` 模块可导入
-2. `from utils import *` — 加载工具库（config.yml、keymap、按键发送、单位查询）
-3. `from GetPixels import get_info, scan_screen_data` — 加载屏幕扫描引擎
-4. 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
-5. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
-6. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
+2. 打包模式下 patch `utils` / `GetPixels` 的模块级路径，使其指向 exe 同级的 `Fuyutsui/`
+3. `from utils import *` — 加载工具库（config.yml、keymap、按键发送、单位查询）
+4. `from GetPixels import get_info` — 加载屏幕扫描引擎
+5. 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
+6. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
+7. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
 
-> 覆盖模块（`laoer/`）通过扫描 `Path(__file__).parent` 下的同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `FUYUTSUI_TOOLS_PATH` 手动指定路径。
+> 覆盖模块（`laoer/`）通过扫描 exe 同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `FUYUTSUI_TOOLS_PATH` 手动指定路径。
 
 ---
 
@@ -659,19 +661,7 @@ FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
 
 ---
 
-## 十三、血量实时轮询（main.lua 覆盖）
-
-覆盖 `F:OnUpdate`，添加血量高频轮询：
-
-- **间隔**：0.2 秒（`HEALTH_INTERVAL`）
-- **范围**：非团本时启用（`pollHealth = (instanceType ~= "raid")`）
-- **更新内容**：`updatePlayerHealth()` + `updateTargetHealth()` + 遍历 `self.group` 更新队伍
-- **团本时**：禁用轮询，依赖原始 `UNIT_HEALTH` 事件驱动，节省性能
-- **区域切换**：监听 `PLAYER_ENTERING_WORLD` 和 `ZONE_CHANGED_NEW_AREA` 刷新 `pollHealth`
-
----
-
-## 十四、按键发送机制
+## 十三、按键发送机制
 
 Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
@@ -685,7 +675,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ---
 
-## 十五、添加新职业逻辑的步骤
+## 十四、添加新职业逻辑的步骤
 
 ### Lua 端
 
@@ -707,7 +697,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ---
 
-## 十六、开发规范（必读）
+## 十五、开发规范（必读）
 
 > 以下规则在 FuyutsuiTools 中添加任何新功能时**必须遵守**。
 
@@ -717,7 +707,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 2. **中文命名**：像素块名称、状态字段、GUI 文本统一使用中文（如 `"驱散开关"`、`"生命值"`）
 3. **保存原始引用**：覆盖任何函数前必须先保存：`local origXxx = F.Xxx`
 4. **调用原始函数**：覆盖函数末尾必须调用 `origXxx(self, ...)` 保留原有行为
-5. **新功能放 main.lua**：帧循环相关的覆盖统一放在 `main.lua`，不要塞进 `core.lua`
+5. **文件层级对应主插件**：FuyutsuiTools 的覆盖文件应与主插件保持同名同路径（如覆盖 `core/block.lua` → 创建 `core/block.lua`），新增文件同理
 
 ### Lua 端规则
 
@@ -751,8 +741,8 @@ def run_paladin_logic(state_dict, spec_name):
     return result
 ```
 
-- **配置合并**：FuyutsuiTools 的 `config.yml` 会自动与主插件深度合并，只需写差异部分
-- **按键映射**：FuyutsuiTools 的 `keymap.yml` 优先级高于主插件
+- **配置合并**：`laoer/config.yml` 会自动与主配置深度合并，只需写差异部分
+- **按键映射**：`laoer/keymap/` 中的条目会追加到已加载的键位映射
 - **职业逻辑返回值**：必须返回 `(action_hotkey, current_step, unit_info)` 三元组，无操作时 `action_hotkey = None`
 - **工具函数**：优先使用 `utils.py` 中的 `get_hotkey()`、`get_lowest_health_unit()` 等，不要重复造轮子
 
@@ -776,11 +766,11 @@ def run_paladin_logic(state_dict, spec_name):
 
 ---
 
-## 十七、调试技巧
+## 十六、调试技巧
 
 - **Lua 像素调试**：`/fu gui` 打开像素块调试界面，查看所有像素索引的名称和当前值
 - **Lua 斜杠命令**：`/fu message 测试消息` — 向聊天框发送测试文本
 - **Lua 秘密值**：`/script SetTestSecret(0)` 关闭秘密值限制
-- **Python 像素颜色**：`other/GetRGB.py` 获取鼠标位置像素 RGB 值
+- **Python 像素颜色**：`Fuyutsui/other/GetRGB.py` 获取鼠标位置像素 RGB 值
 - **Python 热重载**：GUI 中的"重载"按钮重新加载所有模块
-- **Python 信息调试**：`other/GetInfo.py` 获取完整 state_dict
+- **Python 信息调试**：`Fuyutsui/other/GetInfo.py` 获取完整 state_dict
