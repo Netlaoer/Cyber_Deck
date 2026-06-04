@@ -20,7 +20,7 @@ def check_environment():
     
     # 检查当前目录
     if not Path("logic_gui_Tools.py").exists():
-        print("❌ 错误：未找到 logic_gui_Tools.py，请将本脚本放在 FuyutsuiTools 目录下运行！")
+        print("❌ 错误：未找到 logic_gui_Tools.py，请将本脚本放在 Cyber_Deck 目录下运行！")
         print(f"当前目录：{Path.cwd()}")
         input("\n按回车键退出...")
         sys.exit(1)
@@ -156,7 +156,7 @@ def show_result():
 
     print("💡 使用说明：")
     print("   1. 将exe发送给其他人")
-    print("   2. 接收者需要将exe放在 FuyutsuiTools 目录下（即与 Fuyutsui/ 子目录同级）：")
+    print("   2. 接收者需要将exe放在 Cyber_Deck 目录下（即与 Fuyutsui/ 子目录同级）：")
     print("      - Fuyutsui/config.yml 文件")
     print("      - Fuyutsui/class/ 目录")
     print("      - Fuyutsui/keymap/ 目录")

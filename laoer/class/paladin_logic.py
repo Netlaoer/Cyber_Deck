@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FuyutsuiTools 覆盖：圣骑士逻辑（驱散开关支持）"""
+"""Cyber_Deck 覆盖：圣骑士逻辑（驱散开关支持）"""
 import importlib
 from utils import get_hotkey
 

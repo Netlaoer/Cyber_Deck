@@ -1,4 +1,4 @@
-# FuyutsuiTools
+# Cyber Deck（赛博义肢）
 
 **Fuyutsui 的功能扩展与数据覆盖模块**
 
@@ -16,7 +16,7 @@
 1. **WoW 插件层（Lua）**：在游戏内运行，将玩家/目标/队伍/法术等状态编码为屏幕顶部像素条的颜色值
 2. **Python 决策层**：在外部运行，通过屏幕像素扫描读取游戏状态，根据职业逻辑做决策，通过后台按键（PostMessage）向游戏发送操作
 
-**FuyutsuiTools** 是 Fuyutsui 的扩展插件，通过覆盖机制在不修改主插件代码的情况下扩展功能。
+**Cyber_Deck** 是 Fuyutsui 的扩展插件，通过覆盖机制在不修改主插件代码的情况下扩展功能。
 
 ---
 
@@ -61,14 +61,14 @@ Fuyutsui/
 ├── main.lua              # 事件处理函数 + OnUpdate 帧循环（1723行）
 ├── gui.lua               # Ace3 配置界面（/fu gui 像素块调试/查看）
 │
-└── Fuyutsui/             # Python 决策层（已移至 FuyutsuiTools/Fuyutsui/）
+└── Fuyutsui/             # Python 决策层（已移至 Cyber_Deck/Fuyutsui/）
 ```
 
-### FuyutsuiTools（扩展插件）
+### Cyber_Deck（扩展插件）
 
 ```
-FuyutsuiTools/
-├── FuyutsuiTools.toc     # 依赖 Fuyutsui
+Cyber_Deck/
+├── Cyber_Deck.toc     # 依赖 Fuyutsui
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
 ├── main.lua              # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
 ├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Fuyutsui/ 子目录）
@@ -104,7 +104,7 @@ FuyutsuiTools/
 └── pack/                 # 打包工具（开发者用）
 ```
 
-> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/FuyutsuiTools/Fuyutsui/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/Cyber_Deck/Fuyutsui/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
 
 ---
 
@@ -112,7 +112,7 @@ FuyutsuiTools/
 
 ### Lua 端
 
-WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsui 先加载，FuyutsuiTools 后加载。
+WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsui 先加载，Cyber_Deck 后加载。
 
 **Fuyutsui 加载顺序**：
 1. `embeds.xml` + `Libs/LibRangeCheck-3.0`
@@ -120,7 +120,7 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 3. 13 个 `class/*.lua` 文件
 4. `main.lua` → `gui.lua`
 
-**FuyutsuiTools 加载顺序**（在 Fuyutsui 之后）：
+**Cyber_Deck 加载顺序**（在 Fuyutsui 之后）：
 1. `init.lua` — 覆盖 OnEnable
 2. `main.lua` — 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
 3. `core\core.lua` — 驱散开关扩展 + db 注册
@@ -139,7 +139,7 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 6. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
 7. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
 
-> 覆盖模块（`laoer/`）通过扫描 exe 同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `FUYUTSUI_TOOLS_PATH` 手动指定路径。
+> 覆盖模块（`laoer/`）通过扫描 exe 同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `CYBER_DECK_OVERRIDE` 手动指定路径。
 
 ---
 
@@ -556,7 +556,7 @@ state_dict = {
     "一键辅助": int,
     "法术失败": int,      # 0=无失败, 1~N=对应 failed_spell_map
     "spells": { "法术名": 冷却值 },  # 0=就绪, >0=冷却中
-    "驱散开关": int,      # 0=关闭, 1=开启 (FuyutsuiTools 扩展)
+    "驱散开关": int,      # 0=关闭, 1=开启 (Cyber_Deck 扩展)
     "group": {
         "1": { "生命值": float, "驱散": int, "角色": int, ... },
         ...
@@ -585,11 +585,11 @@ state_dict = {
 
 ---
 
-## 十、FuyutsuiTools 覆盖机制
+## 十、Cyber_Deck 覆盖机制
 
 ### Lua 端覆盖
 
-FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖：
+Cyber_Deck 的 Lua 文件在主插件之后加载，通过以下方式覆盖：
 
 1. **保存原始函数引用**：`local origOnUpdate = F.OnUpdate`
 2. **覆盖函数**：`function F:OnUpdate(elapsed) ... origOnUpdate(self, elapsed) end`
@@ -612,7 +612,7 @@ FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖�
 
 通过 `overrides.py` 实现：
 
-1. **模块级替换**：`import_with_override(module_name)` 优先从 FuyutsuiTools 加载同名模块
+1. **模块级替换**：`import_with_override(module_name)` 优先从 Cyber_Deck 加载同名模块
 2. **配置深度合并**：Monkey-patch `utils.load_config()` 和 `utils.load_keymap()`
 3. **逻辑包装**：覆盖模块先 `importlib.import_module` 加载原始模块，包装后暴露同名函数
 
@@ -628,7 +628,7 @@ FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖�
 
 ## 十一、驱散开关机制详解
 
-FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
+Cyber_Deck 新增的驱散开关是跨越 Lua/Python 双层的功能：
 
 ### Lua 端（存储 + 显示）
 - `class/Paladin.lua`：在神圣专精的 `ClassBlocks` 中添加 `"驱散开关"` 像素块
@@ -649,7 +649,7 @@ FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
 
 ## 十二、Holy 专精进攻覆盖机制
 
-FuyutsuiTools 为神圣专精的进攻技能做了三处覆盖：
+Cyber_Deck 为神圣专精的进攻技能做了三处覆盖：
 
 ### 1. MacrosList 覆盖（`class/Paladin.lua`）
 
@@ -731,7 +731,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 2. 按 config.yml 自动发现（或手动在 `_build_class_module_map` 中注册）
 3. 在 `Fuyutsui/class/` 目录创建 `config.yml`（定义该职业的像素块配置）
 
-### FuyutsuiTools 端（可选）
+### Cyber_Deck 端（可选）
 
 1. 创建 `class/NewClass.lua` 扩展像素块
 2. 创建 `laoer/class/newclass_logic.py` 覆盖逻辑
@@ -740,7 +740,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ## 十六、开发规范（必读）
 
-> 以下规则在 FuyutsuiTools 中添加任何新功能时**必须遵守**。
+> 以下规则在 Cyber_Deck 中添加任何新功能时**必须遵守**。
 
 ### 通用规则
 
@@ -748,7 +748,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 2. **中文命名**：像素块名称、状态字段、GUI 文本统一使用中文（如 `"驱散开关"`、`"生命值"`）
 3. **保存原始引用**：覆盖任何函数前必须先保存：`local origXxx = F.Xxx`
 4. **调用原始函数**：覆盖函数末尾必须调用 `origXxx(self, ...)` 保留原有行为
-5. **文件层级对应主插件**：FuyutsuiTools 的覆盖文件应与主插件保持同名同路径（如覆盖 `core/block.lua` → 创建 `core/block.lua`），新增文件同理
+5. **文件层级对应主插件**：Cyber_Deck 的覆盖文件应与主插件保持同名同路径（如覆盖 `core/block.lua` → 创建 `core/block.lua`），新增文件同理
 
 ### Lua 端规则
 
@@ -795,7 +795,7 @@ def run_paladin_logic(state_dict, spec_name):
 | 2 | 确定是纯 Lua 功能还是需要 Lua + Python 双端配合 |
 | 3 | 纯 Lua：按覆盖模板写代码，放入对应文件（帧相关→main.lua，初始化→init.lua，开关→core/core.lua） |
 | 4 | 双端：Lua 端添加像素块编码，Python 端在 `overrides.py` 注册覆盖模块 |
-| 5 | 更新 `FuyutsuiTools.toc`（如新增文件） |
+| 5 | 更新 `Cyber_Deck.toc`（如新增文件） |
 | 6 | 更新本 README.md 对应章节 |
 
 ### 常见陷阱

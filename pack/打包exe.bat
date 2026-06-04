@@ -6,9 +6,9 @@ echo 赛博义肢 - 一键打包工具
 echo ====================================
 echo.
 
-REM 检查是否在FuyutsuiTools目录
+REM 检查是否在Cyber_Deck目录
 if not exist "logic_gui_Tools.py" (
-    echo ❌ 错误：未找到 logic_gui_Tools.py，请将本脚本放在 FuyutsuiTools 目录下运行！
+    echo ❌ 错误：未找到 logic_gui_Tools.py，请将本脚本放在 Cyber_Deck 目录下运行！
     echo 当前目录：%cd%
     pause
     exit /b 1

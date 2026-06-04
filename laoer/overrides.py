@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FuyutsuiTools 覆盖模块：config.yml 合并 + 职业逻辑覆盖加载"""
+"""Cyber_Deck 覆盖模块：config.yml 合并 + 职业逻辑覆盖加载"""
 import sys
 from pathlib import Path
 import importlib
@@ -41,7 +41,7 @@ def load_override_config():
 
 # ── 模块覆盖加载 ──
 def import_with_override(module_name: str):
-    """优先从 FuyutsuiTools/class/ 加载同名模块（覆盖），找不到则回退到内置 class/"""
+    """优先从 laoer/class/ 加载同名模块（覆盖），找不到则回退到内置 class/"""
     override_file = _override_class_dir / f"{module_name}.py"
     if override_file.is_file():
         spec = importlib.util.spec_from_file_location(f"_override.{module_name}", override_file)
@@ -96,7 +96,7 @@ def apply_overrides():
                         if isinstance(entry, dict):
                             max_id += 1
                             keymap[str(max_id)] = entry
-                    print(f"[FuyutsuiTools] 已合并 keymap 覆盖: {km_name} (+{len(extra)} 条)")
+                    print(f"[Cyber_Deck] 已合并 keymap 覆盖: {km_name} (+{len(extra)} 条)")
             _patched_load_keymap._cache = keymap
             return keymap
 
@@ -124,10 +124,10 @@ def print_loaded_info():
     cfg = load_override_config()
     if cfg:
         named_keys = [f"{_CLASS_NAMES.get(k, k)}(ID:{k})" for k in cfg.keys()]
-        print(f"[FuyutsuiTools] 已加载覆盖配置: {named_keys}")
+        print(f"[Cyber_Deck] 已加载覆盖配置: {named_keys}")
     modules = [f.stem for f in _override_class_dir.glob('*_logic.py')]
     if modules:
-        print(f"[FuyutsuiTools] 已加载覆盖模块: {modules}")
+        print(f"[Cyber_Deck] 已加载覆盖模块: {modules}")
 
 
 def clear_merged_cache():
