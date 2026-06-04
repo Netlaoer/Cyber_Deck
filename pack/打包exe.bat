@@ -72,6 +72,7 @@ REM 执行PyInstaller打包
     --key %BUILD_KEY% ^
     --paths Arasaka ^
     --hidden-import yaml ^
+    --hidden-import mss ^
     --icon="laoer/other/icon.ico" ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
