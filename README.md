@@ -104,7 +104,7 @@ FuyutsuiTools/
 └── pack/                 # 打包工具（开发者用）
 ```
 
-> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 运行时将 `Fuyutsui/` 加入 sys.path 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/FuyutsuiTools/Fuyutsui/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
 
 ---
 
