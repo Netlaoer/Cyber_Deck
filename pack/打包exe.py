@@ -106,6 +106,7 @@ def build_exe():
         "--exclude-module=numpy",
         "--exclude-module=PIL",
         "--exclude-module=tkinter.test",
+        "--hidden-import=yaml",
         "--exclude-module=utils",
         "--exclude-module=GetPixels",
         "--add-data", "laoer/other/icon.ico;other",

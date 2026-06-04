@@ -71,6 +71,7 @@ REM 执行PyInstaller打包
     --workpath pack/build ^
     --key %BUILD_KEY% ^
     --paths Arasaka ^
+    --hidden-import yaml ^
     --icon="laoer/other/icon.ico" ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
