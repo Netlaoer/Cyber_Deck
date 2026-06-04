@@ -70,17 +70,17 @@ Fuyutsui/
 FuyutsuiTools/
 ├── FuyutsuiTools.toc     # 依赖 Fuyutsui
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
-├── main.lua              # 覆盖 OnUpdate（已由主插件接管，存量文件）
+├── main.lua              # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
 ├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Fuyutsui/ 子目录）
 ├── README.md             # 项目说明
 │
 ├── core/
-│   ├── core.lua          # 驱散开关（SwitchDispel、updatePlayerConfig 覆盖）
+│   ├── core.lua          # 驱散开关（SwitchDispel 扩展 + db 注册）
 │   ├── config.lua        # 占位（空文件）
 │   ├── quickbutton.lua   # 四按钮可拖拽面板（爆发/AOE/逻辑/驱散）
 │
 ├── class/
-│   └── Paladin.lua       # 神圣专精添加"驱散开关"像素块
+│   └── Paladin.lua       # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
 │
 ├── Fuyutsui/             # Python 主工具（原主插件内的"请将我放到其他文件夹并重命名"目录，移动至此）
 │   ├── logic_gui.py      # 备用 GUI 入口
@@ -95,7 +95,7 @@ FuyutsuiTools/
 │   ├── overrides.py      # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
 │   ├── config.yml        # 覆盖配置
 │   ├── class/
-│   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 制裁之锤固定按键）
+│   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 目标类型/距离绕过 + 制裁固定键）
 │   ├── keymap/
 │   │   └── paladin.yml   # 圣骑士扩展键位
 │   └── other/
@@ -122,9 +122,9 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 
 **FuyutsuiTools 加载顺序**（在 Fuyutsui 之后）：
 1. `init.lua` — 覆盖 OnEnable
-2. `main.lua` — 覆盖 OnUpdate（已退化为注释，功能由主插件接管）
-3. `core\core.lua` — 驱散开关
-4. `class\Paladin.lua` — 圣骑士数据块扩展
+2. `main.lua` — 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
+3. `core\core.lua` — 驱散开关扩展 + db 注册
+4. `class\Paladin.lua` — 圣骑士数据块 + MacrosList 覆盖
 5. `core\config.lua` — 占位
 6. `core\quickbutton.lua` — 四按钮面板
 
@@ -600,9 +600,12 @@ FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖�
 | 文件 | 覆盖函数 | 说明 |
 |------|---------|------|
 | `init.lua` | `F:OnEnable` | 进入世界时重新初始化（守卫防重复，仅执行一次） |
-| `main.lua` | `F:OnUpdate` | 血量实时轮询（0.2秒，非团本时启用） |
-| `core\core.lua` | `F:SwitchDispel` | 驱散开关切换（0/1，写入 db.char.dispel + 像素） |
-| `core\core.lua` | `F:updatePlayerConfig` | 初始化时读取并显示驱散开关状态 |
+| `main.lua` | `F:updatePlayerConfig` | 初始化时写入驱散开关像素 |
+| `main.lua` | `F:updateEnemyCount` | 追加 5 码内姓名版敌人计数 |
+| `main.lua` | `F:updateUnitCastingOrChannelingInfo` | 修复焦点引导报错（pcall 防崩） |
+| `core\core.lua` | `F:SwitchDispel` | 驱散开关（纯扩展，更新像素同步） |
+| `class\Paladin.lua` | `Fuyutsui.ClassBlocks[1]` | 追加驱散开关/5码敌人像素块 |
+| `class\Paladin.lua` | `Fuyutsui.MacrosList.staticSpells` | 审判/震击用焦点目标 + 正义盾击用玩家自己 |
 | `core\quickbutton.lua` | `F:InitQuickToggleButton` | 隐藏原按钮，创建四按钮可拖拽面板 |
 
 ### Python 端覆盖
@@ -618,7 +621,8 @@ FuyutsuiTools 的 Lua 文件在主插件之后加载，通过以下方式覆盖�
 | 文件 | 覆盖内容 |
 |------|---------|
 | `laoer/overrides.py` | config 深度合并 + keymap 合并 + 模块覆盖加载 |
-| `laoer/class/paladin_logic.py` | 驱散开关（临时移除驱散字段）+ 制裁之锤固定按键 |
+| `laoer/config.yml` | 追加驱散开关/5码敌人字段（Holy专精 step 48/49） |
+| `laoer/class/paladin_logic.py` | 驱散开关 + 目标类型绕过（友方目标配合@focustarget）+ 5豆正义盾击5码敌人判断 + 制裁之锤固定按键 |
 
 ---
 
@@ -643,7 +647,44 @@ FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
 
 ---
 
-## 十二、四按钮面板（quickbutton.lua 覆盖）
+## 十二、Holy 专精进攻覆盖机制
+
+FuyutsuiTools 为神圣专精的进攻技能做了三处覆盖：
+
+### 1. MacrosList 覆盖（`class/Paladin.lua`）
+
+覆盖了审判、神圣震击、正义盾击的宏文本：
+
+| 索引 | 技能 | 原宏 | 覆盖后 |
+|------|------|------|--------|
+| 6 | 审判 | `审判` | `[@focustarget,harm,nodead][harm,nodead]审判` |
+| 10 | 正义盾击 | `正义盾击` | `[@player]正义盾击` |
+| 14 | 神圣震击 | `神圣震击` | `[@focustarget,harm,nodead][harm,nodead]神圣震击` |
+
+宏逻辑：
+- 有焦点且焦点目标为敌方 → 打焦点的目标
+- 否则打当前目标（敌方）
+- 正义盾击始终对玩家施放（玩家中心 AoE，避免切目标）
+
+### 2. 目标类型绕过（`laoer/class/paladin_logic.py`）
+
+Holy 专精下，当目标是友方（`目标类型 >= 11`）时，强制将 `目标类型` 设为 2（敌方），使原始逻辑中的 `1 <= 目标类型 <= 3` 条件通过。配合宏的 `@focustarget` 实现"选中友方治疗，自动对焦点目标输出"的工作流。
+
+- 目标为友方 → 绕过目标类型判断
+- 目标为敌方 → 不干预（原始判断自然通过）
+- 无目标 → 不干预（原始判断自然失败，避免空转）
+
+### 3. 正义盾击 5 码判断（Lua + Python 双层）
+
+**Lua 端**（`main.lua`）：`updateEnemyCount` 包装后追加 5 码内姓名版敌人计数，写入 `5码敌人` 像素块。
+
+**Python 端**：5 豆时检查 `5码敌人 >= 1`，有则强制 `目标距离 = 1` 使 `目标距离 <= 5` 条件通过；无则让原判断自然失败（不浪费 GCD 对空气打盾击）。
+
+**像素块配置**（`laoer/config.yml`）：Holy 专精 step 49 注册 `5码敌人` 字段。
+
+---
+
+## 十三、四按钮面板（quickbutton.lua 覆盖）
 
 覆盖 `F:InitQuickToggleButton`，隐藏原始单按钮，创建可拖拽四按钮面板：
 
@@ -661,7 +702,7 @@ FuyutsuiTools 新增的驱散开关是跨越 Lua/Python 双层的功能：
 
 ---
 
-## 十三、按键发送机制
+## 十四、按键发送机制
 
 Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
@@ -675,7 +716,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ---
 
-## 十四、添加新职业逻辑的步骤
+## 十五、添加新职业逻辑的步骤
 
 ### Lua 端
 
@@ -697,7 +738,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ---
 
-## 十五、开发规范（必读）
+## 十六、开发规范（必读）
 
 > 以下规则在 FuyutsuiTools 中添加任何新功能时**必须遵守**。
 
@@ -766,7 +807,7 @@ def run_paladin_logic(state_dict, spec_name):
 
 ---
 
-## 十六、调试技巧
+## 十七、调试技巧
 
 - **Lua 像素调试**：`/fu gui` 打开像素块调试界面，查看所有像素索引的名称和当前值
 - **Lua 斜杠命令**：`/fu message 测试消息` — 向聊天框发送测试文本

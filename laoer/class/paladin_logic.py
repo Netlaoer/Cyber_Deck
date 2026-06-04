@@ -35,7 +35,7 @@ def run_paladin_logic(state_dict, spec_name):
                 removed_dispel[key] = data["驱散"]
                 del data["驱散"]
 
-    # 覆盖：Holy进攻技能仅在目标是友方时不判断（配合[@targettarget]）
+    # 覆盖：Holy进攻技能仅在目标是友方时不判断（配合[@focustarget]）
     # 目标类型>=11为友方, 1-3为敌方, 0为无目标
     orig_目标类型 = state_dict.get("目标类型", 0)
     if spec_name == "神圣" and orig_目标类型 >= 11:
