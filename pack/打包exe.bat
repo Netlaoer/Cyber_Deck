@@ -70,12 +70,14 @@ REM 执行PyInstaller打包
     --distpath . ^
     --workpath pack/build ^
     --key %BUILD_KEY% ^
-    --paths Fuyutsui ^
+    --paths Arasaka ^
     --icon="laoer/other/icon.ico" ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
     --exclude-module PIL ^
     --exclude-module tkinter.test ^
+    --exclude-module utils ^
+    --exclude-module GetPixels ^
     --add-data "laoer/other/icon.ico;other" ^
     logic_gui_Tools.py
 
@@ -105,7 +107,7 @@ echo 📂 输出文件：%cd%\Cyber_Deck.exe
 echo 📊 文件大小：%SIZE_MB%.%SIZE_MB_R:~0,1% MB
 echo.
 echo 💡 使用说明：
-echo    1. 将 exe 与 config.yml、class/、keymap/ 放在同一目录下运行
+echo    1. exe 可放任意位置运行，自动通过注册表/进程定位 WoW 插件目录
 echo.
 
 REM 清理临时文件

@@ -25,7 +25,7 @@
 ### Fuyutsui（主插件）
 
 ```
-Fuyutsui/
+Arasaka/
 ├── Fuyutsui.toc          # 插件描述 (v0.0.8, 接口 120000-120005)
 ├── embeds.xml            # Ace3 库嵌入
 ├── libs/                 # 第三方库（Ace3, LibRangeCheck-3.0）
@@ -61,7 +61,7 @@ Fuyutsui/
 ├── main.lua              # 事件处理函数 + OnUpdate 帧循环（1723行）
 ├── gui.lua               # Ace3 配置界面（/fu gui 像素块调试/查看）
 │
-└── Fuyutsui/             # Python 决策层（已移至 Cyber_Deck/Fuyutsui/）
+└── 请将我移走并重命名/     # Python 决策层（已移至 Cyber_Deck/Arasaka/）
 ```
 
 ### Cyber_Deck（扩展插件）
@@ -71,7 +71,7 @@ Cyber_Deck/
 ├── Cyber_Deck.toc     # 依赖 Fuyutsui
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
 ├── main.lua              # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Fuyutsui/ 子目录）
+├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Arasaka/ 子目录）
 ├── README.md             # 项目说明
 │
 ├── core/
@@ -82,7 +82,7 @@ Cyber_Deck/
 ├── class/
 │   └── Paladin.lua       # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
 │
-├── Fuyutsui/             # Python 主工具（原主插件内的"请将我放到其他文件夹并重命名"目录，移动至此）
+├── Arasaka/             # Python 主工具（原主插件内的"请将我放到其他文件夹并重命名"目录，移动至此）
 │   ├── logic_gui.py      # 备用 GUI 入口
 │   ├── utils.py          # 核心工具库
 │   ├── GetPixels.py      # 屏幕像素扫描引擎
@@ -104,7 +104,7 @@ Cyber_Deck/
 └── pack/                 # 打包工具（开发者用）
 ```
 
-> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/Cyber_Deck/Fuyutsui/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/Cyber_Deck/Arasaka/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
 
 ---
 
@@ -131,8 +131,8 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 ### Python 端
 
 `Cyber_Deck.exe` 是打包后的主程序入口，启动时（对应源代码 `logic_gui_Tools.py`）：
-1. 将 `Fuyutsui/` 子目录加入 `sys.path`，确保 `utils`、`GetPixels`、`class` 模块可导入
-2. 打包模式下 patch `utils` / `GetPixels` 的模块级路径，使其指向 exe 同级的 `Fuyutsui/`
+1. 将 `Arasaka/` 子目录加入 `sys.path`，确保 `utils`、`GetPixels`、`class` 模块可导入
+2. 打包模式下 patch `utils` / `GetPixels` 的模块级路径，使其指向 exe 同级的 `Arasaka/`
 3. `from utils import *` — 加载工具库（config.yml、keymap、按键发送、单位查询）
 4. `from GetPixels import get_info` — 加载屏幕扫描引擎
 5. 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
@@ -481,9 +481,9 @@ char = { level, aoeMode(0=自动/1=单体), cooldowns(爆发), dpsMode(0=官方�
 
 **按键映射优先级**（高→低）：
 1. `laoer/keymap/<职业>/` 覆盖目录
-2. `Fuyutsui/keymap/<职业>/` 主目录
+2. `Arasaka/keymap/<职业>/` 主目录
 3. `laoer/config.yml` 覆盖合并
-4. `Fuyutsui/config.yml` 基座配置
+4. `Arasaka/config.yml` 基座配置
 
 ### 职业逻辑模块统一接口
 
@@ -727,9 +727,9 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ### Python 端
 
-1. 创建 `Fuyutsui/class/newclass_logic.py`，实现 `run_newclass_logic(state_dict, spec_name)`
+1. 创建 `Arasaka/class/newclass_logic.py`，实现 `run_newclass_logic(state_dict, spec_name)`
 2. 按 config.yml 自动发现（或手动在 `_build_class_module_map` 中注册）
-3. 在 `Fuyutsui/class/` 目录创建 `config.yml`（定义该职业的像素块配置）
+3. 在 `Arasaka/class/` 目录创建 `config.yml`（定义该职业的像素块配置）
 
 ### Cyber_Deck 端（可选）
 
@@ -744,7 +744,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 ### 通用规则
 
-1. **不修改主插件源码**：所有功能通过覆盖机制实现，绝不直接编辑 `Fuyutsui/` 下的文件
+1. **不修改主插件源码**：所有功能通过覆盖机制实现，绝不直接编辑 `Arasaka/` 下的文件
 2. **中文命名**：像素块名称、状态字段、GUI 文本统一使用中文（如 `"驱散开关"`、`"生命值"`）
 3. **保存原始引用**：覆盖任何函数前必须先保存：`local origXxx = F.Xxx`
 4. **调用原始函数**：覆盖函数末尾必须调用 `origXxx(self, ...)` 保留原有行为
@@ -812,6 +812,6 @@ def run_paladin_logic(state_dict, spec_name):
 - **Lua 像素调试**：`/fu gui` 打开像素块调试界面，查看所有像素索引的名称和当前值
 - **Lua 斜杠命令**：`/fu message 测试消息` — 向聊天框发送测试文本
 - **Lua 秘密值**：`/script SetTestSecret(0)` 关闭秘密值限制
-- **Python 像素颜色**：`Fuyutsui/other/GetRGB.py` 获取鼠标位置像素 RGB 值
+- **Python 像素颜色**：`Arasaka/other/GetRGB.py` 获取鼠标位置像素 RGB 值
 - **Python 热重载**：GUI 中的"重载"按钮重新加载所有模块
-- **Python 信息调试**：`Fuyutsui/other/GetInfo.py` 获取完整 state_dict
+- **Python 信息调试**：`Arasaka/other/GetInfo.py` 获取完整 state_dict

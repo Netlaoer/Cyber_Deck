@@ -97,7 +97,7 @@ def build_exe():
         "--noconsole",  # 不显示控制台窗口
         "--name=Cyber_Deck",  # exe名称
         "--noconfirm",  # 不询问确认，直接覆盖
-        "--paths", "Fuyutsui",  # 添加子目录到搜索路径，使 PyInstaller 能找到 utils/GetPixels/class
+        "--paths", "Arasaka",  # 添加子目录到搜索路径，使 PyInstaller 能找到 utils/GetPixels/class
         "--distpath", ".",  # 输出到项目根目录
         "--workpath", "pack/build",  # 构建缓存目录
         "--key=" + build_key,  # 每次打包随机 AES 密钥
@@ -106,6 +106,8 @@ def build_exe():
         "--exclude-module=numpy",
         "--exclude-module=PIL",
         "--exclude-module=tkinter.test",
+        "--exclude-module=utils",
+        "--exclude-module=GetPixels",
         "--add-data", "laoer/other/icon.ico;other",
         "logic_gui_Tools.py"  # 主程序
     ]
@@ -149,18 +151,14 @@ def show_result():
     print()
     
     print("⚠️  不包含（需exe同目录提供）：")
-    print("   - Fuyutsui/config.yml（主配置文件）")
-    print("   - Fuyutsui/class/ 目录（职业逻辑）")
-    print("   - Fuyutsui/keymap/ 目录（键位配置）")
+    print("   - Arasaka/config.yml（主配置文件）")
+    print("   - Arasaka/class/ 目录（职业逻辑）")
+    print("   - Arasaka/keymap/ 目录（键位配置）")
     print()
 
     print("💡 使用说明：")
     print("   1. 将exe发送给其他人")
-    print("   2. 接收者需要将exe放在 Cyber_Deck 目录下（即与 Fuyutsui/ 子目录同级）：")
-    print("      - Fuyutsui/config.yml 文件")
-    print("      - Fuyutsui/class/ 目录")
-    print("      - Fuyutsui/keymap/ 目录")
-    print("   3. 程序会自动从exe所在目录的 Fuyutsui/ 子目录读取配置文件")
+    print("   2. exe 可放任意位置运行，会自动通过注册表/进程定位 WoW 插件目录")
     print()
     
     print("⚠️  重要提示：")
