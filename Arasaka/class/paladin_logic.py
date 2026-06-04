@@ -210,6 +210,10 @@ def run_paladin_logic(state_dict, spec_name):
             elif 圣疗术CD == 0 and 大红冷却CD > 1 and 生命值 < 25:
                 current_step = "施放 圣疗术"
                 action_hotkey = get_hotkey(1, "圣疗术")
+            # 圣疗术(队友救急)
+            elif 圣疗术CD == 0 and 大红冷却CD == 0 and 最低生命值 < 20:
+                current_step = "施放 圣疗术"
+                action_hotkey = get_hotkey(int(最低单位), "圣疗术")
             # 美德道标
             elif 美德道标CD == 0 and HP75 >= 3 and 爆发 == 1:
                 current_step = "施放 美德道标"
