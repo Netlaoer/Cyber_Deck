@@ -9,8 +9,8 @@ end
 -- 覆盖 MacrosList：进攻技能施法目标
 if GetSpecialization() == 1 then
     if Fuyutsui.MacrosList and Fuyutsui.MacrosList.staticSpells then
-        Fuyutsui.MacrosList.staticSpells[6] = "[@targettarget,harm,nodead][harm,nodead]审判"
+        Fuyutsui.MacrosList.staticSpells[6] = "[@focustarget,harm,nodead][harm,nodead]审判"
         Fuyutsui.MacrosList.staticSpells[10] = "[@player]正义盾击"
-        Fuyutsui.MacrosList.staticSpells[14] = "[@targettarget,harm,nodead][harm,nodead]神圣震击"
+        Fuyutsui.MacrosList.staticSpells[14] = "[@focustarget,harm,nodead][harm,nodead]神圣震击"
     end
 end
