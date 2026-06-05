@@ -8,6 +8,13 @@ import sys
 import shutil
 import subprocess
 import secrets
+from pathlib import Path
+
+# 自动切换到项目 venv（如果当前不在 venv 中）
+_venv_python = Path(__file__).parent.parent / ".venv" / "Scripts" / "python.exe"
+if _venv_python.is_file() and sys.executable != str(_venv_python.resolve()):
+    print("🔄 切换到项目虚拟环境...")
+    sys.exit(subprocess.run([str(_venv_python), str(Path(__file__).resolve())]).returncode)
 import time
 from pathlib import Path
 
@@ -25,17 +32,25 @@ def check_environment():
         input("\n按回车键退出...")
         sys.exit(1)
     
-    # 检查PyInstaller
+    # 检查/安装 PyInstaller 5.x
     try:
-        result = subprocess.run([sys.executable, "-m", "PyInstaller", "--version"], 
+        result = subprocess.run([sys.executable, "-m", "PyInstaller", "--version"],
                               capture_output=True, text=True)
         if result.returncode != 0:
-            raise Exception("PyInstaller not found")
+            raise Exception()
+        version = result.stdout.strip().split()[-1]
+        if version.startswith("6."):
+            raise Exception("v6 不支持 --key")
     except:
-        print("❌ 错误：PyInstaller 未安装！")
-        print("请先安装：pip install pyinstaller")
-        input("\n按回车键退出...")
-        sys.exit(1)
+        print("📦 安装 PyInstaller 5.x ...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "setuptools", "pyinstaller<6.0", "-q"],
+                       check=False)
+        result = subprocess.run([sys.executable, "-m", "PyInstaller", "--version"],
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ 错误：PyInstaller 安装失败！")
+            input("\n按回车键退出...")
+            sys.exit(1)
     
     return True
 
@@ -81,6 +96,10 @@ def build_exe():
     print("📦 开始打包，这可能需要几分钟...")
     print()
     
+    # 确保 PyInstaller 5.x
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "setuptools", "pyinstaller<6.0", "-q"], check=True)
+
     # 设置环境变量，阻止打包过程中误启动 GUI
     os.environ['CYBER_LIMB_BUILDING'] = '1'
 
@@ -106,10 +125,6 @@ def build_exe():
         "--exclude-module=numpy",
         "--exclude-module=PIL",
         "--exclude-module=tkinter.test",
-        "--hidden-import=yaml",
-        "--hidden-import=mss",
-        "--exclude-module=utils",
-        "--exclude-module=GetPixels",
         "--add-data", "laoer/other/icon.ico;other",
         "logic_gui_Tools.py"  # 主程序
     ]
@@ -149,10 +164,10 @@ def show_result():
     
     print("📝 包含的内容：")
     print("   ✓ 所有Python依赖库")
-    print("   ✓ 核心程序代码")
+    print("   ✓ 核心程序代码（加密）")
     print()
-    
-    print("⚠️  不包含（需exe同目录提供）：")
+
+    print("⚠️  不包含（exe自动定位 WoW 插件目录读取）：")
     print("   - Arasaka/config.yml（主配置文件）")
     print("   - Arasaka/class/ 目录（职业逻辑）")
     print("   - Arasaka/keymap/ 目录（键位配置）")

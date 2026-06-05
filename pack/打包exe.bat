@@ -65,21 +65,19 @@ goto :eof
 :pkg_start
 echo %BUILD_KEY%>pack\.build_key
 
+REM 确保 PyInstaller 5.x
+.venv\Scripts\python -m pip install "pyinstaller<6.0" -q
 REM 执行PyInstaller打包
 .venv\Scripts\python -m PyInstaller --clean --onefile --noconsole --name="Cyber_Deck" --noconfirm ^
     --distpath . ^
     --workpath pack/build ^
     --key %BUILD_KEY% ^
     --paths Arasaka ^
-    --hidden-import yaml ^
-    --hidden-import mss ^
     --icon="laoer/other/icon.ico" ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
     --exclude-module PIL ^
     --exclude-module tkinter.test ^
-    --exclude-module utils ^
-    --exclude-module GetPixels ^
     --add-data "laoer/other/icon.ico;other" ^
     logic_gui_Tools.py
 
@@ -108,8 +106,7 @@ set /a "SIZE_MB_R=SIZE_BYTES %% 1048576 * 1000 / 1048576"
 echo 📂 输出文件：%cd%\Cyber_Deck.exe
 echo 📊 文件大小：%SIZE_MB%.%SIZE_MB_R:~0,1% MB
 echo.
-echo 💡 使用说明：
-echo    1. exe 可放任意位置运行，自动通过注册表/进程定位 WoW 插件目录
+echo    exe 可放任意位置运行, 自动定位 WoW 插件目录
 echo.
 
 REM 清理临时文件
