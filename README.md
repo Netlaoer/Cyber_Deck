@@ -25,7 +25,7 @@
 ### Fuyutsui（主插件）
 
 ```
-Arasaka/
+Fuyutsui/
 ├── Fuyutsui.toc          # 插件描述 (v0.0.8, 接口 120000-120005)
 ├── embeds.xml            # Ace3 库嵌入
 ├── libs/                 # 第三方库（Ace3, LibRangeCheck-3.0）
@@ -68,7 +68,8 @@ Arasaka/
 
 ```
 Cyber_Deck/
-├── Cyber_Deck.toc     # 依赖 Fuyutsui
+├── Cyber_Deck.toc       # 依赖 Fuyutsui
+├── Cyber_Deck.exe       # 打包后的 Python GUI（可放任意位置运行）
 ├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
 ├── main.lua              # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
 ├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Arasaka/ 子目录）
@@ -82,15 +83,17 @@ Cyber_Deck/
 ├── class/
 │   └── Paladin.lua       # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
 │
-├── Arasaka/             # Python 主工具（原主插件内的"请将我放到其他文件夹并重命名"目录，移动至此）
-│   ├── logic_gui.py      # 备用 GUI 入口
-│   ├── utils.py          # 核心工具库
-│   ├── GetPixels.py      # 屏幕像素扫描引擎
+├── Arasaka/             # Python 主工具（原主插件内的 Python 决策层，复制至此）
 │   ├── config.yml        # 像素块配置（state/spells/groups 定义）
-│   ├── class/            # 职业逻辑模块（13个职业）
-│   ├── keymap/           # 按键映射（13个职业）
-│   └── other/            # 调试工具
+│   ├── utils.py          # 核心工具库（配置/缓存、keymap、按键发送、单位查询）
+│   ├── GetPixels.py      # 屏幕像素扫描引擎（mss 截图 + RGB 解码）
+│   ├── logic_gui.py      # 备用 GUI 入口（无覆盖支持，主插件原始版本）
+│   ├── logic_nogui.py    # 无 GUI 终端版本（调试用）
+│   ├── class/            # 职业逻辑模块（13 个职业 + __init__.py）
+│   ├── keymap/           # 按键映射（13 个职业 .yml）
+│   └── other/            # 调试工具（GetRGB.py、GetInfo.py、hex_to_decode.py）
 │
+├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的同级目录）
 ├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
 │   ├── overrides.py      # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
 │   ├── config.yml        # 覆盖配置
@@ -104,7 +107,7 @@ Cyber_Deck/
 └── pack/                 # 打包工具（开发者用）
 ```
 
-> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。exe 可放任意位置运行，自动通过注册表或进程定位 WoW 安装路径，找到 `Interface/AddOns/Cyber_Deck/Arasaka/` 加载模块，并自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。`utils.py`、`GetPixels.py`、`class/` 等代码**不打包进 exe**，exe 运行时从磁盘 `Arasaka/` 目录动态加载最新代码，因此修改 Python 文件后无需重新打包 exe。exe 通过注册表/进程自动定位 WoW 安装路径找到 `Interface/AddOns/Cyber_Deck/Arasaka/`，同时自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
 
 ---
 
@@ -131,12 +134,12 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 ### Python 端
 
 `Cyber_Deck.exe` 是打包后的主程序入口，启动时（对应源代码 `logic_gui_Tools.py`）：
-1. 将 `Arasaka/` 子目录加入 `sys.path`，确保 `utils`、`GetPixels`、`class` 模块可导入
-2. 打包模式下 patch `utils` / `GetPixels` 的模块级路径，使其指向 exe 同级的 `Arasaka/`
-3. `from utils import *` — 加载工具库（config.yml、keymap、按键发送、单位查询）
-4. `from GetPixels import get_info` — 加载屏幕扫描引擎
-5. 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
-6. `_build_class_module_map()` — 从 config.yml + class/ 目录构建职业模块映射
+1. **定位 Arasaka/ 目录**：优先从 exe 同级查找，再通过 Windows 注册表读取 WoW 安装路径定位，最后从运行中的 WoW 进程路径反推
+2. 将 `Arasaka/` 目录添加到 `sys.path`
+3. `importlib.import_module("utils")` + `importlib.import_module("GetPixels")` — 动态导入（不打包进 exe，从磁盘读取最新代码）
+4. 打包模式下 patch `utils` / `GetPixels` 模块级路径，使其指向定位到的 `Arasaka/`
+5. `_resolve_override_base()` — 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
+6. `_build_class_module_map()` — 从 config.yml keymap 字段 + class/ 目录构建职业ID→模块名映射
 7. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
 
 > 覆盖模块（`laoer/`）通过扫描 exe 同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `CYBER_DECK_OVERRIDE` 手动指定路径。
@@ -480,9 +483,9 @@ char = { level, aoeMode(0=自动/1=单体), cooldowns(爆发), dpsMode(0=官方�
 | `find_wow_hwnd()` | 查找 WoW 窗口句柄 |
 
 **按键映射优先级**（高→低）：
-1. `laoer/keymap/<职业>/` 覆盖目录
-2. `Arasaka/keymap/<职业>/` 主目录
-3. `laoer/config.yml` 覆盖合并
+1. `laoer/keymap/*.yml` 覆盖目录（追加到 keymap，新 ID 不会替换已有技能）
+2. `Arasaka/keymap/*.yml` 主目录
+3. `laoer/config.yml` 中的 keymap 字段（追加到 keymap）
 4. `Arasaka/config.yml` 基座配置
 
 ### 职业逻辑模块统一接口
@@ -728,8 +731,9 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 ### Python 端
 
 1. 创建 `Arasaka/class/newclass_logic.py`，实现 `run_newclass_logic(state_dict, spec_name)`
-2. 按 config.yml 自动发现（或手动在 `_build_class_module_map` 中注册）
-3. 在 `Arasaka/class/` 目录创建 `config.yml`（定义该职业的像素块配置）
+2. 按 config.yml 自动发现（`keymap` 字段 → `xxx.yml` → `xxx_logic` 模块名），或通过 `_FALLBACK_ID` 兜底映射
+3. 在 `Arasaka/config.yml` 中对应职业ID下添加 `keymap: "newclass.yml"` 字段
+4. 在 `Arasaka/keymap/` 目录创建 `newclass.yml` 定义按键映射
 
 ### Cyber_Deck 端（可选）
 
@@ -804,6 +808,10 @@ def run_paladin_logic(state_dict, spec_name):
 - **线程安全**：Python 端按键检测和逻辑执行在不同线程，访问 `_state_dict` 时注意 `_state_lock`
 - **团本性能**：遍历队伍成员的轮询逻辑在 40 人团时开销大，建议加实例类型判断（`instanceType ~= "raid"`）
 - **WoW API 限制**：`UnitHealthPercent` 等查询 API 有客户端频率限制，不适合每帧调用，应使用 `OnUpdate` + 时间累加器节流
+- **覆盖模块的本地绑定**：`overrides.py` 通过 `utils.load_config = _patched_load_config` 做 monkey-patch，但如果其他模块已经用 `from utils import load_config` 导入了，那个本地引用不会更新。被覆盖的模块内部应使用 `import utils; utils.load_config()` 而非 `from utils import load_config`，否则调用的是原始函数
+- **Keymap 覆盖只追加不替换**：`laoer/keymap/` 中的条目会以新 ID 追加到已有映射，不会按技能名替换已有条目。如果主 keymap 中某个技能已存在，覆盖条目实际上永远不会被 `get_hotkey()` 命中
+- **Config/Keymap 缓存不同步**：项目中 `GetPixels.py`、`utils.py`、`logic_gui*.py` 各有独立的 config 缓存。手动修改 `config.yml` 或 `keymap/*.yml` 后，仅点"重载"按钮才能使所有缓存一致地刷新
+- **打包 exe 中 `__file__` 指向临时目录**：PyInstaller `--onefile` 运行时解压到临时 `_MEIPASS` 目录，`Path(__file__).parent` 指向那里而非 exe 所在目录。读写外部文件（如 `gui_window_state.json`、`class/` 目录）必须用 `Path(sys.executable).parent`，否则文件要么找不到，要么写后丢失
 
 ---
 
