@@ -2,7 +2,22 @@
 
 **Fuyutsui 的功能扩展与数据覆盖模块**
 
-<!-- AI_INSTRUCTION: 在修改此项目任何代码之前，请完整阅读本文件，了解架构、所有函数、编码约定和开发规范。完成代码修改后，必须同步更新本文件中对应的章节（函数列表、文件结构、数据结构等），保持文档与代码一致。 -->
+<!--
+AI_INSTRUCTION（AI 必读）：
+1. 在修改此项目任何代码之前，请完整阅读本文件，理解整体架构、所有函数、编码约定和开发规范。
+2. 本项目是一个 WoW 辅助决策系统，分为 Lua 插件层（游戏内）和 Python 决策层（外部 exe）。
+3. 核心原则：不修改主插件（Fuyutsui）源码，所有扩展通过覆盖机制实现。
+4. 完成代码修改后，必须同步更新本文件中对应的章节：
+   - 新增/删除文件 → 更新"二、文件结构"
+   - 新增/修改函数 → 更新对应模块的函数表格
+   - 新增数据结构 → 更新"八、状态数据结构"
+   - 新增覆盖 → 更新"十、Cyber_Deck 覆盖机制"
+   - 新增功能 → 更新"十一~十五"对应章节
+5. Lua 覆盖模板：保存原始引用 → 覆盖函数 → 调用原始函数
+6. Python 覆盖模板：importlib 加载原始模块 → 包装函数 → 在 overrides.py 注册
+7. 像素块名称、状态字段、GUI 文本统一使用中文
+8. 新增像素块索引建议从 150+ 开始，避免与 config.yml 中已有索引冲突
+-->
 <!-- AI: Before making any changes to this project, read this entire file first. After completing code changes, you MUST update the corresponding sections in this file (function lists, file structure, data structures, etc.) to keep documentation in sync with code. -->
 
 > 用户使用说明：[使用说明.md](使用说明.md)
@@ -68,46 +83,73 @@ Fuyutsui/
 
 ```
 Cyber_Deck/
-├── Cyber_Deck.toc       # 依赖 Fuyutsui
-├── Cyber_Deck.exe       # 打包后的 Python GUI（可放任意位置运行）
-├── init.lua              # 覆盖 OnEnable，进入世界时重新初始化
-├── main.lua              # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-├── logic_gui_Tools.py    # 主 GUI 启动器（根目录入口，委托 Arasaka/ 子目录）
-├── README.md             # 项目说明
+├── Cyber_Deck.toc          # 插件定义（## Dependencies: Fuyutsui）
+├── Cyber_Deck.exe          # 打包后的 Python GUI（PyInstaller --onefile，可放任意位置运行）
+├── init.lua                # 覆盖 OnEnable，进入世界时重新初始化（守卫防重复）
+├── main.lua                # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
+├── logic_gui_Tools.py      # 主 GUI 启动器源码（根目录入口，委托 Arasaka/ 子目录，未上传 GitHub）
+├── gui_window_state.json   # GUI 窗口状态持久化（位置、大小等）
+├── README.md               # 完整技术文档（本文件）
+├── 使用说明.md              # 用户使用说明
 │
-├── core/
-│   ├── core.lua          # 驱散开关（SwitchDispel 扩展 + db 注册）
-│   ├── config.lua        # 占位（空文件）
-│   ├── quickbutton.lua   # 四按钮可拖拽面板（爆发/AOE/逻辑/驱散）
+├── core/                   # Lua 核心覆盖模块
+│   ├── core.lua            # 驱散开关（SwitchDispel 扩展 + db 注册）
+│   ├── config.lua          # 配置覆盖（当前为空占位文件）
+│   ├── quickbutton.lua     # 四按钮可拖拽面板（爆发/AOE/逻辑/驱散）
 │
-├── class/
-│   └── Paladin.lua       # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
+├── class/                  # Lua 职业数据块扩展
+│   └── Paladin.lua         # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
 │
-├── Arasaka/             # Python 主工具（原主插件内的 Python 决策层，复制至此）
-│   ├── config.yml        # 像素块配置（state/spells/groups 定义）
-│   ├── utils.py          # 核心工具库（配置/缓存、keymap、按键发送、单位查询）
-│   ├── GetPixels.py      # 屏幕像素扫描引擎（mss 截图 + RGB 解码）
-│   ├── logic_gui.py      # 备用 GUI 入口（无覆盖支持，主插件原始版本）
-│   ├── logic_nogui.py    # 无 GUI 终端版本（调试用）
-│   ├── class/            # 职业逻辑模块（13 个职业 + __init__.py）
-│   ├── keymap/           # 按键映射（13 个职业 .yml）
-│   └── other/            # 调试工具（GetRGB.py、GetInfo.py、hex_to_decode.py）
+├── Arasaka/                # Python 主工具（原主插件内的 Python 决策层，复制至此）
+│   ├── config.yml          # 像素块配置（state/spells/groups 定义，按职业ID分段）
+│   ├── utils.py            # 核心工具库（配置加载/缓存、keymap 加载、按键发送 PostMessage、单位查询）
+│   ├── GetPixels.py        # 屏幕像素扫描引擎（mss 截图 + RGB 解码 → state_dict）
+│   ├── logic_gui.py        # 备用 GUI 入口（无覆盖支持，主插件原始版本，仅用于对比/回退）
+│   ├── logic_nogui.py      # 无 GUI 终端版本（调试用，直接终端运行）
+│   ├── class/              # 职业逻辑模块（13 个职业 + __init__.py）
+│   │   ├── __init__.py     # 模块初始化
+│   │   ├── warrior_logic.py
+│   │   ├── paladin_logic.py
+│   │   ├── hunter_logic.py
+│   │   ├── ...             # 其余 10 个职业
+│   ├── keymap/             # 按键映射（13 个职业 .yml）
+│   │   ├── warrior.yml
+│   │   ├── paladin.yml
+│   │   ├── ...             # 其余 11 个职业
+│   └── other/              # 调试工具
+│       ├── GetRGB.py       # 获取鼠标位置像素 RGB 值
+│       ├── GetInfo.py      # 获取完整 state_dict 并打印
+│       └── hex_to_decode.py # 十六进制颜色解码
 │
-├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的同级目录）
-├── laoer/                # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
-│   ├── overrides.py      # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
-│   ├── config.yml        # 覆盖配置
+├── laoer/                  # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
+│   ├── overrides.py        # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
+│   ├── config.yml          # 覆盖配置（追加驱散开关/5码敌人字段，Holy 专精 step 48/49）
 │   ├── class/
 │   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 目标类型/距离绕过 + 制裁固定键）
 │   ├── keymap/
-│   │   └── paladin.yml   # 圣骑士扩展键位
+│   │   └── paladin.yml     # 圣骑士扩展键位（制裁之锤等固定按键映射）
 │   └── other/
-│       └── icon.ico      # exe 图标
+│       └── icon.ico        # exe 图标（赛博朋克风格）
 │
-└── pack/                 # 打包工具（开发者用）
+└── pack/                   # 打包工具（开发者用，PyInstaller 配置和脚本）
 ```
 
-> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。`utils.py`、`GetPixels.py`、`class/` 等代码**不打包进 exe**，exe 运行时从磁盘 `Arasaka/` 目录动态加载最新代码，因此修改 Python 文件后无需重新打包 exe。exe 通过注册表/进程自动定位 WoW 安装路径找到 `Interface/AddOns/Cyber_Deck/Arasaka/`，同时自动扫描同级目录检测覆盖模块（`laoer/`）。`logic_gui_Tools.py` 源文件未上传 GitHub。
+> **注意**：Python 端以打包后的 `Cyber_Deck.exe` 形式分发。
+>
+> **打包方式**：使用 PyInstaller `--onefile` 模式打包 `logic_gui_Tools.py`，生成单个 exe 文件。
+>
+> **动态加载机制**：`utils.py`、`GetPixels.py`、`class/` 等 Python 源代码**不打包进 exe**。exe 运行时通过 `importlib.import_module` 从磁盘 `Arasaka/` 目录动态加载最新代码，因此修改 Python 文件后无需重新打包 exe，点击 GUI 中的"重载"按钮即可生效。
+>
+> **路径定位**：exe 通过以下优先级查找 `Arasaka/` 目录：
+> 1. exe 同级目录下的 `Arasaka/`
+> 2. Windows 注册表中的 WoW 安装路径 → `Interface/AddOns/Cyber_Deck/Arasaka/`
+> 3. 运行中的 WoW 进程路径反推
+>
+> **覆盖模块发现**：exe 自动扫描同级目录，任何含 `overrides.py` 的文件夹都会被检测为覆盖模块（如 `laoer/`）。也可通过环境变量 `CYBER_DECK_OVERRIDE` 手动指定路径。
+>
+> **PyInstaller 注意事项**：`--onefile` 运行时解压到临时 `_MEIPASS` 目录，`Path(__file__).parent` 指向临时目录而非 exe 所在目录。读写外部文件（如 `gui_window_state.json`、`class/` 目录）必须用 `Path(sys.executable).parent`，否则文件找不到或写入后丢失。
+>
+> **源代码**：`logic_gui_Tools.py` 源文件未上传 GitHub，仅在本地和打包后的 exe 中存在。
 
 ---
 
@@ -812,6 +854,10 @@ def run_paladin_logic(state_dict, spec_name):
 - **Keymap 覆盖只追加不替换**：`laoer/keymap/` 中的条目会以新 ID 追加到已有映射，不会按技能名替换已有条目。如果主 keymap 中某个技能已存在，覆盖条目实际上永远不会被 `get_hotkey()` 命中
 - **Config/Keymap 缓存不同步**：项目中 `GetPixels.py`、`utils.py`、`logic_gui*.py` 各有独立的 config 缓存。手动修改 `config.yml` 或 `keymap/*.yml` 后，仅点"重载"按钮才能使所有缓存一致地刷新
 - **打包 exe 中 `__file__` 指向临时目录**：PyInstaller `--onefile` 运行时解压到临时 `_MEIPASS` 目录，`Path(__file__).parent` 指向那里而非 exe 所在目录。读写外部文件（如 `gui_window_state.json`、`class/` 目录）必须用 `Path(sys.executable).parent`，否则文件要么找不到，要么写后丢失
+- **TOC 加载顺序敏感**：Cyber_Deck 的 TOC 文件顺序决定了 Lua 覆盖的执行顺序。`init.lua` 必须最先加载（覆盖 OnEnable），`main.lua` 其次（覆盖 OnUpdate 相关函数），然后是 `core/*.lua`，最后是 `class/*.lua`。顺序错误会导致覆盖失效或运行时错误
+- **SavedVariables 命名空间**：Cyber_Deck 的 SavedVariables 存储在 `FuyutsuiADB` 中（与主插件共享），新增持久化字段需在 `core/core.lua` 的 `defaults.char` 中注册，否则重载后数据丢失
+- **像素块索引冲突**：新增像素块时，索引不能与 `config.yml` 中已有的冲突。主插件使用的索引范围约为 1~100+，Cyber_Deck 扩展建议从 150+ 开始分配
+- **Python 模块缓存**：`importlib.import_module` 会缓存已加载的模块。热重载时需先 `importlib.reload()` 原始模块，再重新加载覆盖模块，否则覆盖模块中的 `_orig` 引用仍指向旧版本
 
 ---
 
@@ -820,6 +866,80 @@ def run_paladin_logic(state_dict, spec_name):
 - **Lua 像素调试**：`/fu gui` 打开像素块调试界面，查看所有像素索引的名称和当前值
 - **Lua 斜杠命令**：`/fu message 测试消息` — 向聊天框发送测试文本
 - **Lua 秘密值**：`/script SetTestSecret(0)` 关闭秘密值限制
+- **Lua 事件监控**：`/etrace` 或使用 `/eventtrace` 监控特定事件的触发
 - **Python 像素颜色**：`Arasaka/other/GetRGB.py` 获取鼠标位置像素 RGB 值
-- **Python 热重载**：GUI 中的"重载"按钮重新加载所有模块
-- **Python 信息调试**：`Arasaka/other/GetInfo.py` 获取完整 state_dict
+- **Python 热重载**：GUI 中的"重载"按钮重新加载所有模块（先 reload 原始模块，再重载覆盖模块）
+- **Python 信息调试**：`Arasaka/other/GetInfo.py` 获取完整 state_dict 并打印
+- **Python 无 GUI 模式**：`Arasaka/logic_nogui.py` 可在终端直接运行，不依赖 GUI，适合调试职业逻辑
+- **Lua 宏重建**：`/fu macro rebuild` 手动重建所有动态宏（修改 MacrosList 后需要）
+
+---
+
+## 十八、快速参考（AI 速查）
+
+### 关键文件定位指南
+
+| 需求 | 文件 |
+|------|------|
+| 添加 Lua 覆盖（帧循环相关） | `Cyber_Deck/main.lua` |
+| 添加 Lua 覆盖（初始化） | `Cyber_Deck/init.lua` |
+| 添加 Lua 覆盖（开关/配置） | `Cyber_Deck/core/core.lua` |
+| 添加 Lua 像素块扩展 | `Cyber_Deck/class/<职业名>.lua` |
+| 添加 Python 职业逻辑 | `Arasaka/class/<职业>_logic.py` |
+| 覆盖 Python 职业逻辑 | `laoer/class/<职业>_logic.py` |
+| 添加按键映射 | `Arasaka/keymap/<职业>.yml` |
+| 覆盖按键映射 | `laoer/keymap/<职业>.yml` |
+| 添加像素块配置 | `laoer/config.yml`（只写差异部分） |
+| 注册覆盖模块 | `laoer/overrides.py` |
+| 添加 SavedVariables 字段 | `Cyber_Deck/core/core.lua` 的 `defaults.char` |
+
+### 覆盖模板速查
+
+**Lua 覆盖**：
+```lua
+local F = Fuyutsui
+local origXxx = F.Xxx           -- 1. 保存原始引用
+function F:Xxx(...)             -- 2. 覆盖函数
+    -- 新逻辑
+    return origXxx(self, ...)   -- 3. 调用原始函数
+end
+```
+
+**Python 覆盖**：
+```python
+import importlib
+_orig = importlib.import_module("class.paladin_logic")
+_orig_run = _orig.run_paladin_logic
+
+def run_paladin_logic(state_dict, spec_name):
+    # 拦截/修改 state_dict
+    result = _orig_run(state_dict, spec_name)
+    return result
+```
+
+### 像素编码速查
+
+| 概念 | 说明 |
+|------|------|
+| 像素位置 | 屏幕顶部 255 个像素，宽度 = 屏幕宽度/255 |
+| G 通道 | 索引号 (1~255)，标识数据含义 |
+| B 通道 | 数值 (0~1)，通过颜色曲线映射 |
+| 冷却值 | 0=就绪, 1~254=冷却中(秒), 255=不可用 |
+| 写入像素 | `self:CreatTexture(block, value)` (value: 0~1) |
+
+### 线程模型速查
+
+| 线程 | 间隔 | 职责 |
+|------|------|------|
+| 按键检测 | 50ms (`TOGGLE_INTERVAL`) | 轮询绑定按键 |
+| 逻辑执行 | 200ms (`LOGIC_INTERVAL`) | 扫描→决策→发送 |
+| GUI 刷新 | 100ms (`GUI_UPDATE_MS`) | 更新状态面板 |
+
+### 职业逻辑返回值
+
+```python
+return (action_hotkey, current_step, unit_info)
+# action_hotkey: 按键字符串 或 None（无操作）
+# current_step: 步骤描述字符串（GUI 显示）
+# unit_info: 附加信息字典（GUI 显示）
+```
