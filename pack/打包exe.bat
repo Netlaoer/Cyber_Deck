@@ -40,11 +40,6 @@ if exist "build" (
 )
 
 
-if exist "Cyber_Deck.exe" (
-    echo 删除旧的 exe...
-    del "Cyber_Deck.exe"
-)
-
 echo.
 echo 📦 正在打包，这可能需要几分钟...
 echo.

@@ -488,7 +488,7 @@ def _run_logic_loop():
                 if state_dict:
                     class_id = state_dict.get("职业")
                     spec_id = state_dict.get("专精")
-                    config = load_config()
+                    config = _get_config_cached()
                     class_name, spec_name = get_class_and_spec_name(config, class_id, spec_id)
                     select_keymap_for_class(class_id)
                     try:
