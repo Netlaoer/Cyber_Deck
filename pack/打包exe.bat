@@ -65,8 +65,8 @@ goto :eof
 :pkg_start
 echo %BUILD_KEY%>pack\.build_key
 
-REM 确保 PyInstaller 5.x
-.venv\Scripts\python -m pip install "pyinstaller<6.0" -q
+REM 确保 PyInstaller 5.x + 依赖
+.venv\Scripts\python -m pip install "setuptools<67" "pyinstaller<6.0" tinyaes -q
 REM 执行PyInstaller打包
 .venv\Scripts\python -m PyInstaller --clean --onefile --noconsole --name="Cyber_Deck" --noconfirm ^
     --distpath . ^
@@ -74,10 +74,13 @@ REM 执行PyInstaller打包
     --key %BUILD_KEY% ^
     --paths Arasaka ^
     --icon="laoer/other/icon.ico" ^
+    --hidden-import tkinter ^
+    --hidden-import tkinter.ttk ^
+    --hidden-import tkinter.font ^
+    --hidden-import _tkinter ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
     --exclude-module PIL ^
-    --exclude-module tkinter.test ^
     --add-data "laoer/other/icon.ico;other" ^
     logic_gui_Tools.py
 

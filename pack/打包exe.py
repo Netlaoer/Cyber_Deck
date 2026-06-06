@@ -121,10 +121,13 @@ def build_exe():
         "--workpath", "pack/build",  # 构建缓存目录
         "--key=" + build_key,  # 每次打包随机 AES 密钥
         "--icon=laoer/other/icon.ico",  # exe图标
+        "--hidden-import=tkinter",
+        "--hidden-import=tkinter.ttk",
+        "--hidden-import=tkinter.font",
+        "--hidden-import=_tkinter",
         "--exclude-module=matplotlib",
         "--exclude-module=numpy",
         "--exclude-module=PIL",
-        "--exclude-module=tkinter.test",
         "--add-data", "laoer/other/icon.ico;other",
         "logic_gui_Tools.py"  # 主程序
     ]
