@@ -1,23 +1,4 @@
-﻿MIT 许可证
-
-Copyright (c) 2026 Netlaoer
-
-特此免费授予任何获得本软件及相关文档文件（以下简称"软件"）副本的人不受限制地处理本软件的权利，
-包括但不限于使用、复制、修改、合并、发布、分发、再许可和/或销售本软件副本的权利，以及允许
-获得本软件的人这样做，但须符合以下条件：
-
-上述版权声明和本许可声明应包含在本软件的所有副本或主要部分中。
-
-本软件按"原样"提供，不作任何明示或暗示的保证，包括但不限于适销性、特定用途的适用性和
-非侵权性的保证。在任何情况下，作者或版权持有人均不对任何索赔、损害或其他责任负责，
-无论是在合同、侵权或其他行为中产生的，还是与本软件或本软件的使用或其他交易有关的。
-
-注意：本许可仅适用于项目中的 Lua/UI 源代码。iMorph/ 目录下的 RuniMorph.exe 和 iMorph.dll
-为第三方二进制文件，版权归原作者所有，不在本许可范围内。
-
----
-
-MIT License
+﻿MIT License
 
 Copyright (c) 2026 Netlaoer
 
@@ -42,3 +23,22 @@ SOFTWARE.
 Note: This license applies only to the Lua/UI source code in this project.
 RuniMorph.exe and iMorph.dll in the iMorph/ directory are third-party binaries,
 copyrighted by their original author(s) and not covered by this license.
+
+---
+
+MIT 许可证
+
+Copyright (c) 2026 Netlaoer
+
+特此免费授予任何获得本软件及相关文档文件（以下简称"软件"）副本的人不受限制地处理本软件的权利，
+包括但不限于使用、复制、修改、合并、发布、分发、再许可和/或销售本软件副本的权利，以及允许
+获得本软件的人这样做，但须符合以下条件：
+
+上述版权声明和本许可声明应包含在本软件的所有副本或主要部分中。
+
+本软件按"原样"提供，不作任何明示或暗示的保证，包括但不限于适销性、特定用途的适用性和
+非侵权性的保证。在任何情况下，作者或版权持有人均不对任何索赔、损害或其他责任负责，
+无论是在合同、侵权或其他行为中产生的，还是与本软件或本软件的使用或其他交易有关的。
+
+注意：本许可仅适用于项目中的 Lua/UI 源代码。iMorph/ 目录下的 RuniMorph.exe 和 iMorph.dll
+为第三方二进制文件，版权归原作者所有，不在本许可范围内。
