@@ -10,21 +10,108 @@ import sys
 import os
 import math
 import json
+import subprocess
 from pathlib import Path
 import customtkinter as ctk
 import tkinter as tk
 import importlib
 
+# ── WoW 插件目录自动检测（注册表 + 进程） ──
+def _find_wow_addons_dir():
+    """
+    自动定位魔兽世界的 Interface/AddOns/ 目录。
+    优先级：
+    1. 环境变量 WOW_ADDONS_PATH
+    2. Windows 注册表（正式服 _retail_）
+    3. 正在运行的 Wow.exe / WowClassic.exe 进程路径
+    4. 常见安装路径扫描
+    返回 Path 对象或 None
+    """
+    # 1. Windows 注册表
+    if sys.platform == "win32":
+        try:
+            import winreg
+            for subkey in (
+                r"SOFTWARE\WOW6432Node\Blizzard Entertainment\World of Warcraft",
+                r"SOFTWARE\Blizzard Entertainment\World of Warcraft",
+            ):
+                try:
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, subkey)
+                    install_path, _ = winreg.QueryValueEx(key, "InstallPath")
+                    winreg.CloseKey(key)
+                    if install_path:
+                        # InstallPath 可能已包含 _retail_（如 O:\WoW\_retail_\），也可能不包含
+                        p = Path(install_path)
+                        addons = p / "Interface" / "AddOns"
+                        if addons.is_dir():
+                            return addons
+                        # 如果 InstallPath 不包含 _retail_，尝试拼接
+                        addons = p / "_retail_" / "Interface" / "AddOns"
+                        if addons.is_dir():
+                            return addons
+                except OSError:
+                    continue
+        except ImportError:
+            pass
+
+    # 2. 正在运行的 WoW 进程
+    try:
+        if sys.platform == "win32":
+            result = subprocess.run(
+                ["wmic", "process", "where", "name='Wow.exe' or name='WowClassic.exe'",
+                 "get", "ExecutablePath", "/format:csv"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split("\n"):
+                if ".exe" in line.lower():
+                    exe_path = line.split(",")[-1].strip()
+                    if exe_path:
+                        wow_dir = Path(exe_path).parent  # _retail_ 目录
+                        addons = wow_dir / "Interface" / "AddOns"
+                        if addons.is_dir():
+                            return addons
+    except Exception:
+        pass
+
+    return None
+
+_WOW_ADDONS_DIR = _find_wow_addons_dir()
+
 # ── 解析 Arasaka/ 目录 ──
-_exe_fuyutsui = str(Path(__file__).parent / "Arasaka")
+# 打包后：从外部 WoW 插件目录加载（不再内置）
+# 开发时：从脚本目录加载
+if getattr(sys, 'frozen', False):
+    if _WOW_ADDONS_DIR:
+        _exe_fuyutsui = str(_WOW_ADDONS_DIR / "Cyber_Deck" / "Arasaka")
+    else:
+        # 无法定位 WoW 插件目录
+        import tkinter.messagebox as _mb
+        _mb.showerror("未找到魔兽世界", "无法定位魔兽世界插件目录，程序将退出。")
+        sys.exit(1)
+else:
+    _exe_fuyutsui = str(Path(__file__).parent / "Arasaka")
 if _exe_fuyutsui not in sys.path:
     sys.path.insert(0, _exe_fuyutsui)
 
-from utils import *
+from utils import load_config, get_vk, send_key_to_wow, select_keymap_for_class, get_class_and_spec_name
 from GetPixels import get_info, scan_screen_data
 
+# ── 确保 utils/GetPixels 路径指向外部 WoW 插件目录 ──
+if getattr(sys, 'frozen', False) and _WOW_ADDONS_DIR:
+    _external_arasaka = _WOW_ADDONS_DIR / "Cyber_Deck" / "Arasaka"
+    if _external_arasaka.is_dir():
+        import utils
+        utils._BASE_DIR = str(_external_arasaka)
+        utils.CONFIG_PATH = os.path.join(str(_external_arasaka), "config.yml")
+        utils.KEYMAP_PATH = os.path.join(str(_external_arasaka), "keymap.yml")
+        import GetPixels
+        GetPixels.CONFIG_PATH = os.path.join(str(_external_arasaka), "config.yml")
+
 # ── Cyber_Deck 覆盖 ──
-_app_root = Path(__file__).parent / "Arasaka"
+if getattr(sys, 'frozen', False):
+    _app_root = _WOW_ADDONS_DIR / "Cyber_Deck" / "Arasaka"
+else:
+    _app_root = Path(__file__).parent / "Arasaka"
 
 def _resolve_override_base(app_root: Path) -> Path | None:
     """按优先级查找 Cyber_Deck 覆盖目录，返回存在的路径或 None。"""
@@ -46,7 +133,13 @@ def _resolve_override_base(app_root: Path) -> Path | None:
     except Exception:
         pass
 
-    # 3. 原始 WoW AddOn 目录下的相对路径（兼容旧结构）
+    # 3. 通过 WoW 注册表/进程检测到的 AddOns 目录
+    if _WOW_ADDONS_DIR:
+        cyber_deck = _WOW_ADDONS_DIR / "Cyber_Deck"
+        candidates.append(cyber_deck / "Arasaka")
+        candidates.append(cyber_deck / "laoer")
+
+    # 4. 原始 WoW AddOn 目录下的相对路径（兼容旧结构）
     candidates.append(app_root.parent.parent / "Cyber_Deck" / "Arasaka")
     candidates.append(app_root.parent.parent / "Cyber_Deck" / "laoer")
 
@@ -60,7 +153,7 @@ if _override_base is not None:
     sys.path.insert(0, str(_override_base))
     from overrides import import_with_override, apply_overrides, clear_merged_cache, print_loaded_info
     apply_overrides()
-    # 更新局部 load_config 引用（from utils import * 创建的是模块级绑定）
+    # 更新局部 load_config 引用（显式导入创建的是模块级绑定，需要重新绑定覆盖后的版本）
     import utils
     load_config = utils.load_config
     _clear_merged_cache = clear_merged_cache
@@ -606,7 +699,7 @@ def create_gui():
         root.after(200, lambda: _disable_ime_for_hwnd(root.winfo_id()))
     except Exception:
         pass
-    root.title("神经链接控制台" if (Path(_exe_fuyutsui) / "config.yml").is_file() else "⚠未找到 魔兽世界")
+    root.title("神经链接控制台")
     root.geometry("365x350")
     # 窗口大小配置（正常 / 缩小）
     normal_geometry = "365x350"
@@ -643,7 +736,10 @@ def create_gui():
         pass
 
     # 设置任务栏图标（overrideredirect 下必须用 Win32 API，且需延迟+刷新）
-    _icon_path = Path(__file__).parent / "laoer" / "other" / "icon.ico"
+    if getattr(sys, 'frozen', False):
+        _icon_path = Path(sys._MEIPASS) / "laoer" / "other" / "icon.ico"
+    else:
+        _icon_path = Path(__file__).parent / "laoer" / "other" / "icon.ico"
 
     def _apply_icon():
         if not root.winfo_exists() or not _icon_path.exists():
