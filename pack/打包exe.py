@@ -48,10 +48,6 @@ def clean_build_files(root_dir):
     if build_dir.exists():
         shutil.rmtree(build_dir, ignore_errors=True)
     
-    # 删除旧的dist目录（如果存在）
-    dist_dir = root_dir / "dist"
-    if dist_dir.exists():
-        shutil.rmtree(dist_dir, ignore_errors=True)
     
     print("✅ 清理完成")
     print()
@@ -96,7 +92,6 @@ def build_exe(root_dir):
         "--noconfirm",  # 不询问确认，直接覆盖
         f"--distpath={output_dir}",  # 直接输出到根目录
         f"--workpath={output_dir}/build",  # 临时文件放 build
-        f"--specpath={output_dir}/build",  # spec 文件也放 build
         f"--icon={icon_path}",  # exe图标
         "--exclude-module=matplotlib",
         "--exclude-module=numpy",
@@ -175,11 +170,14 @@ def main():
         # 显示结果
         show_result(root_dir)
         
-        # 清理 build 文件夹
+        # 清理 build 文件夹和 spec 文件
         build_dir = root_dir / "build"
         if build_dir.exists():
             print("🧹 清理 build 临时文件...")
             shutil.rmtree(build_dir, ignore_errors=True)
+        spec_file = root_dir / "Cyber_Deck.spec"
+        if spec_file.exists():
+            spec_file.unlink()
         
         input("\n打包完成！按回车键退出...")
         

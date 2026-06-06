@@ -38,10 +38,8 @@ if exist "build" (
     echo 清理旧的构建文件...
     rmdir /s /q build
 )
-if exist "dist" (
-    echo 清理旧的输出文件...
-    rmdir /s /q dist
-)
+
+
 if exist "Cyber_Deck.exe" (
     echo 删除旧的 exe...
     del "Cyber_Deck.exe"
@@ -56,8 +54,8 @@ set "CYBER_LIMB_BUILDING=1"
 
 REM 执行PyInstaller打包，直接输出到当前目录
 python -m PyInstaller --clean --onefile --noconsole --name="Cyber_Deck" --noconfirm ^
-    --distpath="%cd%" --workpath="%cd%\build" --specpath="%cd%\build" ^
-    --icon="%cd%\laoer\other\icon.ico" ^
+    --distpath="." --workpath="build" ^
+    --icon="laoer/other/icon.ico" ^
     --exclude-module matplotlib ^
     --exclude-module numpy ^
     --exclude-module PIL ^
@@ -97,10 +95,13 @@ echo    2. exe 会自动通过注册表/进程定位 WoW 插件目录
 echo    3. 所有配置、键位、职业逻辑均从 WoW AddOns/Cyber_Deck/ 加载
 echo.
 
-REM 清理 build 文件夹
+REM 清理 build 文件夹和 spec 文件
 if exist "build" (
     echo 🧹 清理 build 临时文件...
     rmdir /s /q build
+)
+if exist "Cyber_Deck.spec" (
+    del "Cyber_Deck.spec"
 )
 
 pause
