@@ -133,11 +133,15 @@ Cyber_Deck/
 │   │   └── paladin.yml     # 圣骑士扩展键位（当前为空占位文件，预留扩展）
 │   └── other/
 │       └── icon.ico        # 程序图标（赛博朋克风格）
+│
+├── pack/                   # 打包工具（将 Python 程序打包为独立 exe）
+│   ├── 打包exe.py          # Python 打包脚本（PyInstaller --onefile --noconsole）
+│   └── 打包exe.bat         # 一键打包批处理（自动检测 Python 路径并调用打包脚本）
 ```
 
-> **注意**：Python 端现已完全开源，直接运行 Python 源码即可，不再打包为 exe。
+> **注意**：Python 端完全开源，可直接运行源码，也可通过 `pack/` 目录下的脚本打包为独立 exe。
 >
-> **启动方式**：运行 `logic_gui_Tools.py`（或双击 `logic.bat`），Python 解释器需安装依赖（见 `requirements.txt`）。
+> **启动方式**：运行 `logic_gui_Tools.py`（或双击 `logic.bat`），Python 解释器需安装依赖（见 `requirements.txt`）。如需打包为 exe，运行 `pack/打包exe.bat`。
 >
 > **动态加载机制**：`utils.py`、`GetPixels.py`、`class/` 等模块通过 `importlib.import_module` 从磁盘 `Arasaka/` 目录动态加载，修改 Python 文件后点击 GUI 中的"重载"按钮即可生效，无需重启程序。
 >
