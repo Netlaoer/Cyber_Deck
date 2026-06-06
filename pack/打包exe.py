@@ -43,7 +43,7 @@ def check_environment():
             raise Exception("v6 不支持 --key")
     except:
         print("📦 安装 PyInstaller 5.x ...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "setuptools", "pyinstaller<6.0", "-q"],
+        subprocess.run([sys.executable, "-m", "pip", "install", "setuptools<67", "pyinstaller<6.0", "tinyaes", "-q"],
                        check=False)
         result = subprocess.run([sys.executable, "-m", "PyInstaller", "--version"],
                               capture_output=True, text=True)
@@ -98,7 +98,7 @@ def build_exe():
     
     # 确保 PyInstaller 5.x
     import subprocess
-    subprocess.run([sys.executable, "-m", "pip", "install", "setuptools", "pyinstaller<6.0", "-q"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "setuptools<67", "pyinstaller<6.0", "tinyaes", "-q"], check=True)
 
     # 设置环境变量，阻止打包过程中误启动 GUI
     os.environ['CYBER_LIMB_BUILDING'] = '1'
