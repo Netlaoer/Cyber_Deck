@@ -87,6 +87,7 @@ Cyber_Deck/
 ├── init.lua                # 覆盖 OnEnable，进入世界时重新初始化（守卫防重复）
 ├── main.lua                # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
 ├── logic_gui_Tools.py      # 主 GUI 启动器源码（根目录入口，委托 Arasaka/ 子目录）
+├── Cyber_Deck.exe          # 打包后的独立可执行文件（由 pack/ 脚本生成，无需 Python 环境）
 ├── gui_window_state.json   # GUI 窗口状态持久化（位置、大小等）
 ├── README.md               # 完整技术文档（本文件）
 ├── 使用说明.md              # 用户使用说明
