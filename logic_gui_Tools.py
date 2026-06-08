@@ -505,14 +505,24 @@ def _run_logic_loop():
                     _spec_name = spec_name
                     _spec_id = spec_id
 
-                # 自动检测换职业/专精，自动重载
-                if class_id != getattr(_run_logic_loop, '_last_class_id', None) or spec_id != getattr(_run_logic_loop, '_last_spec_id', None):
-                    _run_logic_loop._last_class_id = class_id
-                    _run_logic_loop._last_spec_id = spec_id
-                    try:
-                        reload_logic_modules()
-                    except Exception:
-                        pass
+                # 自动检测换职业/专精，自动重载（跳过读蓝条时 class_id/spec_id 为 None 的情况）
+                if class_id is not None and spec_id is not None:
+                    if class_id != getattr(_run_logic_loop, '_last_class_id', None) or spec_id != getattr(_run_logic_loop, '_last_spec_id', None):
+                        old_cid = getattr(_run_logic_loop, '_last_class_id', None)
+                        old_sid = getattr(_run_logic_loop, '_last_spec_id', None)
+                        _run_logic_loop._last_class_id = class_id
+                        _run_logic_loop._last_spec_id = spec_id
+                        config = _get_config_cached()
+                        if old_cid is not None:
+                            old_cname, old_sname = get_class_and_spec_name(config, old_cid, old_sid)
+                            msg = f"[Cyber_Deck] 检测到职业/专精变化: {old_cname}/{old_sname} → {class_name}/{spec_name}"
+                        else:
+                            msg = f"[Cyber_Deck] 首次加载: {class_name}/{spec_name}"
+                        try:
+                            reload_logic_modules()
+                            print(f"{msg}，自动重载完成")
+                        except Exception as e:
+                            print(f"{msg}，自动重载失败: {e}")
 
             if not _logic_enabled:
                 time.sleep(TOGGLE_INTERVAL)
@@ -1115,6 +1125,7 @@ def create_gui():
     _status_freeze_until = [0.0]
 
     def on_refresh_logic():
+        print("[Cyber_Deck] 重载...")
         # 重新加载Python模块
         success = reload_logic_modules()
         
@@ -1153,8 +1164,10 @@ def create_gui():
         _dot_prev_state[0] = "freeze"  # 标记冻结，让 _animate_dot 立即切蓝
         _dot_last_toggle[0] = 0.0
         if success:
+            print("[Cyber_Deck] 重载完成")
             status_label.configure(text="已重载", text_color=CYAN)
         else:
+            print("[Cyber_Deck] 重载失败!")
             status_label.configure(text="ERROR", text_color=RED)
         root.after(1000, lambda: _status_freeze_until.__setitem__(0, 0.0))
 

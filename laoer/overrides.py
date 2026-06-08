@@ -135,6 +135,7 @@ def clear_merged_cache():
     global _cached_override_config, _printed
     _cached_override_config = None
     _printed = False
+    print("[Cyber_Deck] 覆盖缓存已清除，下次读取将重新加载配置")
     try:
         import utils
         utils.load_config._cache = {}
