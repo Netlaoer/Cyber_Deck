@@ -172,6 +172,9 @@ def build_exe():
 
     os.environ['CYBER_LIMB_BUILDING'] = '1'
 
+    upx_exe = ROOT / "pack" / "upx.exe"
+    upx_arg = [f"--upx-dir={upx_exe.parent}"] if upx_exe.exists() else []
+
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--clean", "--onefile", "--noconsole",
@@ -179,6 +182,7 @@ def build_exe():
         f"--distpath={ROOT}",
         f"--workpath={ROOT}/build",
         f"--icon={ICON}",
+        *upx_arg,
         "--exclude-module=matplotlib",
         "--exclude-module=numpy",
         "--exclude-module=PIL",
