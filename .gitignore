@@ -8,3 +8,4 @@
 __pycache__/
 # 忽略文件
 gui_window_state.json
+logic_gui_Tools.py
