@@ -70,11 +70,12 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 import sys, os
 os.chdir(r"{out_dir}")
-sys.argv = ['setup.py', 'build_ext', '--inplace']
+sys.argv = ['setup.py', 'build_ext', '--inplace', '--build-temp', r'{out_dir}/build']
 setup(
     ext_modules=cythonize(
         [Extension("{PYD_NAME}", [r"{PY_FILE}"])],
         language_level=3, quiet=True,
+        build_dir=r"{out_dir}/build",
     ),
 )
 '''
@@ -89,7 +90,9 @@ setup(
         )
     finally:
         tmp.unlink(missing_ok=True)
-        for c in out_dir.glob(f"{PY_FILE.stem}.c"):
+        for c in out_dir.glob("*.c"):
+            c.unlink(missing_ok=True)
+        for c in out_dir.rglob("*.c"):
             c.unlink(missing_ok=True)
 
     if result.returncode != 0:
