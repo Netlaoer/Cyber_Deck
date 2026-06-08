@@ -269,6 +269,26 @@ def main():
     spec = ROOT / "Cyber_Deck.spec"
     if spec.exists():
         spec.unlink()
+    # 清理编译残留
+    for f in ROOT.glob("*.c"):
+        f.unlink(missing_ok=True)
+    for f in ROOT.glob("*.pyd"):
+        f.unlink(missing_ok=True)
+    for f in ROOT.glob("_setup_*.py"):
+        f.unlink(missing_ok=True)
+    # 清理 Arasaka 下的残留
+    for base in [ROOT / "Arasaka", ROOT / "laoer"]:
+        if not base.exists():
+            continue
+        for f in base.rglob("*.c"):
+            f.unlink(missing_ok=True)
+        for f in base.rglob("*.pyd"):
+            f.unlink(missing_ok=True)
+        for f in base.rglob("_setup_*.py"):
+            f.unlink(missing_ok=True)
+        for d in base.rglob("build"):
+            if d.is_dir():
+                shutil.rmtree(d, ignore_errors=True)
 
     show_result()
     input("按回车键退出...")
