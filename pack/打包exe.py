@@ -185,7 +185,9 @@ def build_exe():
         "--exclude-module=tkinter.test",
         "--hidden-import=yaml",
         "--hidden-import=mss",
+        "--hidden-import=customtkinter",
         "--add-binary", f"{PYD_FILE}{os.pathsep}.",
+        "--add-data", f"{ICON}{os.pathsep}laoer/other",
         str(LAUNCHER),
     ]
 
