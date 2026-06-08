@@ -86,8 +86,8 @@ Cyber_Deck/
 ├── Cyber_Deck.toc          # 插件定义（## Dependencies: Fuyutsui）
 ├── init.lua                # 覆盖 OnEnable，进入世界时重新初始化（守卫防重复）
 ├── main.lua                # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-├── logic_gui_Tools.py      # 主 GUI 启动器源码（根目录入口，委托 Arasaka/ 子目录）
-├── Cyber_Deck.exe          # 打包后的独立可执行文件（由 pack/ 脚本生成，无需 Python 环境）
+├── logic_gui_Tools.py      # 主 GUI 启动器（最近有风险暂时闭源,需要源码联系作者）
+├── Cyber_Deck.exe          # 打包后的独立可执行文件（已加密打包，防特征检测，无需 Python 环境）
 ├── gui_window_state.json   # GUI 窗口状态持久化（位置、大小等）
 ├── README.md               # 完整技术文档（本文件）
 ├── 使用说明.md              # 用户使用说明
@@ -140,9 +140,9 @@ Cyber_Deck/
 │   └── 打包exe.bat         # 一键打包批处理（自动检测 Python 路径并调用打包脚本）
 ```
 
-> **注意**：Python 端完全开源，可直接运行源码，也可通过 `pack/` 目录下的脚本打包为独立 exe。
+> **注意**：`logic_gui_Tools.py` 为闭源模块，已通过 Cython 编译加密打包，防止被特征检测。定期更新 `Cyber_Deck.exe` 以确保安全。如需源码请联系作者。
 >
-> **启动方式**：运行 `logic_gui_Tools.py`（或双击 `logic.bat`），Python 解释器需安装依赖（见 `requirements.txt`）。如需打包为 exe，运行 `pack/打包exe.bat`。
+> **启动方式**：直接双击 `Cyber_Deck.exe`，无需 Python 环境。
 >
 > **动态加载机制**：`utils.py`、`GetPixels.py`、`class/` 等模块通过 `importlib.import_module` 从磁盘 `Arasaka/` 目录动态加载，修改 Python 文件后点击 GUI 中的"重载"按钮即可生效，无需重启程序。
 >
@@ -177,7 +177,7 @@ WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsu
 
 ### Python 端
 
-`logic_gui_Tools.py` 是主程序入口，启动时：
+`logic_gui_Tools.py` 是主程序入口（闭源），启动时：
 1. **定位 Arasaka/ 目录**：优先从脚本同级查找，再通过 Windows 注册表读取 WoW 安装路径定位，最后从运行中的 WoW 进程路径反推
 2. 将 `Arasaka/` 目录添加到 `sys.path`
 3. `importlib.import_module("utils")` + `importlib.import_module("GetPixels")` — 动态导入，从磁盘读取最新代码
