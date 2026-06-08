@@ -86,8 +86,8 @@ Cyber_Deck/
 ├── Cyber_Deck.toc          # 插件定义（## Dependencies: Fuyutsui）
 ├── init.lua                # 覆盖 OnEnable，进入世界时重新初始化（守卫防重复）
 ├── main.lua                # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-├── logic_gui_Tools.py      # 主 GUI 启动器（最近有风险暂时闭源,需要源码联系作者）
-├── Cyber_Deck.exe          # 打包后的独立可执行文件（已加密打包，防特征检测，无需 Python 环境）
+├── logic_gui_Tools.py      # 主 GUI 启动器（闭源，Cython 编译加密，防特征检测，源码联系作者）
+├── Cyber_Deck.exe          # 打包后的独立可执行文件（每次打包 hash 不同，无需 Python 环境）
 ├── gui_window_state.json   # GUI 窗口状态持久化（位置、大小等）
 ├── README.md               # 完整技术文档（本文件）
 ├── 使用说明.md              # 用户使用说明
@@ -135,12 +135,14 @@ Cyber_Deck/
 │   └── other/
 │       └── icon.ico        # 程序图标（赛博朋克风格）
 │
-├── pack/                   # 打包工具（将 Python 程序打包为独立 exe）
-│   ├── 打包exe.py          # Python 打包脚本（PyInstaller --onefile --noconsole）
-│   └── 打包exe.bat         # 一键打包批处理（自动检测 Python 路径并调用打包脚本）
+├── pack/                   # 打包工具（Cython 编译 + PyInstaller + UPX 压缩 → 加密 exe）
+│   ├── launcher.py          # exe 启动器（加载 .pyd）
+│   ├── 打包exe.py           # 一键打包脚本（编译 .pyd → 打包 exe → 清理残留）
+│   ├── 打包exe.bat          # 批处理入口
+│   └── upx.exe              # UPX 压缩
 ```
 
-> **注意**：`logic_gui_Tools.py` 为闭源模块，已通过 Cython 编译加密打包，防止被特征检测。定期更新 `Cyber_Deck.exe` 以确保安全。如需源码请联系作者。
+> **安全说明**：`logic_gui_Tools.py` 为核心模块，已通过 Cython 编译为二进制 `.pyd` 后打包进 `Cyber_Deck.exe`。每次打包会注入随机数据确保 exe 文件 hash 不同，防止被特征检测。定期重新打包更新 exe。如需源码请联系作者。
 >
 > **启动方式**：直接双击 `Cyber_Deck.exe`，无需 Python 环境。
 >

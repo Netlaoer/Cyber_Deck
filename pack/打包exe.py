@@ -87,6 +87,7 @@ setup(
             [sys.executable, str(tmp)],
             capture_output=True, text=True,
             cwd=str(out_dir), timeout=300,
+            encoding='utf-8', errors='replace',
         )
     finally:
         tmp.unlink(missing_ok=True)
@@ -170,6 +171,13 @@ def build_exe():
     print("打包中，请等待...")
     print()
 
+    # 注入随机数据到 launcher.py，确保每次打包 exe hash 不同
+    import random, string
+    _random_tag = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+    _launcher_orig = LAUNCHER.read_text(encoding='utf-8')
+    _launcher_new = _launcher_orig.rstrip() + f"\n# {_random_tag}\n"
+    LAUNCHER.write_text(_launcher_new, encoding='utf-8')
+
     os.environ['CYBER_LIMB_BUILDING'] = '1'
 
     upx_exe = ROOT / "pack" / "upx.exe"
@@ -197,6 +205,9 @@ def build_exe():
 
     result = subprocess.run(cmd, cwd=str(ROOT))
     os.environ.pop('CYBER_LIMB_BUILDING', None)
+
+    # 恢复 launcher.py 原样
+    LAUNCHER.write_text(_launcher_orig, encoding='utf-8')
 
     if result.returncode != 0:
         print("\n[ERROR] 打包失败！")
