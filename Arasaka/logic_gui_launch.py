@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-启动器：复制 logic_nogui.py 到 .runtime_tmp/ 下随机文件名后运行，进程结束后删除副本。
-请运行本文件，不要直接运行 logic_nogui.py。
+启动器：复制 logic_gui.py 到 .runtime_tmp/ 下随机文件名后运行，进程结束后删除副本。
+请运行本文件，不要直接运行 logic_gui.py。
 """
 import os
 import secrets
@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 _ALPHABET = string.ascii_letters + string.digits
-_SOURCE_NAME = "logic_nogui.py"
+_SOURCE_NAME = "logic_gui.py"
 _RUNTIME_DIR_NAME = ".runtime_tmp"
 
 
@@ -38,7 +38,6 @@ def _write_runtime_copy(src: Path, dest: Path) -> None:
     lines = text.splitlines(keepends=True)
 
     if lines and "coding" in lines[0] and lines[0].lstrip().startswith("#"):
-        # 保留首行 coding cookie，随机注释紧随其后
         body = "".join(lines[1:])
         dest.write_text(lines[0] + injected + body, encoding="utf-8")
     else:
@@ -80,7 +79,6 @@ def main() -> int:
     env["PYTHONPATH"] = base + (os.pathsep + prev if prev else "")
 
     _write_runtime_copy(src, dest)
-    # 不等待子进程，启动器立即退出，避免后台残留 logic_nogui_launch.py 进程
     subprocess.Popen(
         [sys.executable, str(dest)],
         cwd=base,

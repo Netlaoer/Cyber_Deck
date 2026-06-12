@@ -16,7 +16,7 @@ from utils import *
 # 将需要驱散的首领 ID
 need_dispel_bosses = {4, 5}
 # 不需要驱散的首领 ID
-no_dispel_bosses = {64}
+no_dispel_bosses = {}
 # 法术失败列表
 failed_spell_map = {
     1: "心灵尖啸",

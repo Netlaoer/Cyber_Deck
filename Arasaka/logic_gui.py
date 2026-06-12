@@ -4,8 +4,9 @@
 使用 CustomTkinter，背景半透明，文字保持清晰。
 """
 import json
-import random
 import re
+import secrets
+import string
 import threading
 import time
 import ctypes
@@ -18,12 +19,18 @@ import importlib
 from utils import *
 from GetPixels import get_info
 
-def _gen_random_garbled_title(length: int = 8) -> str:
-    # 使用可显示的 CJK 区间随机字符，生成“乱码风”标题。
-    return "".join(chr(random.randint(0x4E00, 0x9FFF)) for _ in range(length))
+_RUNTIME_DIR_NAME = ".runtime_tmp"
 
 
-title = _gen_random_garbled_title()
+_TITLE_ALPHABET = string.ascii_letters + string.digits
+
+
+def _gen_random_title() -> str:
+    length = secrets.randbelow(5) + 6  # 6~10 位
+    return "".join(secrets.choice(_TITLE_ALPHABET) for _ in range(length))
+
+
+title = _gen_random_title()
 
 # 主窗口默认尺寸（未保存过位置/记录损坏时使用）
 DEFAULT_MAIN_GEOMETRY = "400x110"
@@ -1166,5 +1173,19 @@ def create_gui():
     root.mainloop()
 
 
+def _cleanup_runtime_copy_if_needed() -> None:
+    """由 launch 复制到 .runtime_tmp/ 的副本在退出时自行删除。"""
+    try:
+        p = Path(__file__).resolve()
+        if _RUNTIME_DIR_NAME not in p.parts:
+            return
+        p.unlink()
+    except OSError:
+        pass
+
+
 if __name__ == "__main__":
-    create_gui()
+    try:
+        create_gui()
+    finally:
+        _cleanup_runtime_copy_if_needed()
