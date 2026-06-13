@@ -112,30 +112,67 @@ def apply_overrides():
 
 _CLASS_NAMES = {1: "战士", 2: "圣骑士", 3: "猎人", 4: "盗贼", 5: "牧师", 6: "死亡骑士",
                7: "萨满", 8: "法师", 9: "术士", 10: "武僧", 11: "德鲁伊", 12: "恶魔猎手", 13: "唤魔师"}
-_printed = False
 
 
-def print_loaded_info():
-    """识别到职业后调用，打印覆盖加载信息（只打印一次）"""
-    global _printed
-    if _printed:
+def print_loaded_info(class_id=None):
+    """识别到职业后调用，检查并打印当前职业的覆盖加载信息（每个职业只打印一次）"""
+    if not hasattr(print_loaded_info, '_printed_ids'):
+        print_loaded_info._printed_ids = set()
+    cid_key = str(class_id) if class_id is not None else "__none__"
+    if cid_key in print_loaded_info._printed_ids:
         return
-    _printed = True
+    print_loaded_info._printed_ids.add(cid_key)
+
+    if class_id is None:
+        return
+
     cfg = load_override_config()
-    if cfg:
-        named_keys = [f"{_CLASS_NAMES.get(k, k)}(ID:{k})" for k in cfg.keys()]
-        print(f"[Cyber_Deck] 已加载覆盖配置: {named_keys}")
-    modules = [f.stem for f in _override_class_dir.glob('*_logic.py')]
-    if modules:
-        print(f"[Cyber_Deck] 已加载覆盖模块: {modules}")
+    cid_str = str(class_id)
+
+    # 检查覆盖配置（YAML key 可能是 int 或 str）
+    has_config = class_id in cfg or cid_str in cfg
+
+    # 检查覆盖模块：直接扫描 laoer/class/ 下的 *_logic.py
+    has_module = False
+    matched_module = ""
+    if _override_class_dir.is_dir():
+        try:
+            # 尝试从合并后的 config 获取 keymap 推导模块名
+            import utils
+            merged_cfg = utils.load_config()
+            merged_class = merged_cfg.get(class_id) or merged_cfg.get(cid_str) or {}
+            km = merged_class.get("keymap", "") if isinstance(merged_class, dict) else ""
+            if km.endswith(".yml"):
+                expected_mod = km[:-4] + "_logic"
+                if (_override_class_dir / f"{expected_mod}.py").is_file():
+                    has_module = True
+                    matched_module = expected_mod
+            # 如果 keymap 推导失败，直接列出所有覆盖模块文件
+            if not has_module:
+                all_mods = [f.stem for f in _override_class_dir.glob("*_logic.py")]
+                if all_mods and has_config:
+                    matched_module = all_mods[0]
+                    has_module = True
+        except Exception:
+            pass
+
+    if has_config or has_module:
+        parts = []
+        if has_config:
+            parts.append(f"配置 [{_CLASS_NAMES.get(class_id, class_id)}(ID:{class_id})] config.yml")
+        if has_module:
+            parts.append(f"模块 [{matched_module}.py]")
+        print(f"[Cyber_Deck] 已加载覆盖: {', '.join(parts)}")
 
 
 def clear_merged_cache():
     """重载时清除合并缓存，使下次 load_config() 重新读取并合并"""
-    global _cached_override_config, _printed
+    global _cached_override_config
     _cached_override_config = None
-    _printed = False
-    print("[Cyber_Deck] 覆盖缓存已清除，下次读取将重新加载配置")
+    # 清除 print_loaded_info 的已打印记录，允许切换职业后重新打印
+    if hasattr(print_loaded_info, '_printed_ids'):
+        print_loaded_info._printed_ids.clear()
+    print("[Cyber_Deck] 覆盖缓存已清除，重新加载配置")
     try:
         import utils
         utils.load_config._cache = {}
