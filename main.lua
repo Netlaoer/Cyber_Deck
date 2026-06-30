@@ -4,12 +4,18 @@
 
 local F = Fuyutsui
 
--- 覆盖 updatePlayerConfig：初始化时写入驱散开关像素
+-- 覆盖 updatePlayerConfig：初始化时写入驱散开关像素，同时修复 Fuyutsui 本体 nil 字段崩溃
 local origUpdatePlayerConfig = F.updatePlayerConfig
 function F:updatePlayerConfig()
-    origUpdatePlayerConfig(self)
     local c = self.db and self.db.char
-    if not c or not self.blocks then return end
+    if not c then return end
+    -- 修复 Fuyutsui 本体在 db.char 尚未被 defaults 填充时字段为 nil 导致的崩溃
+    c.aoeMode = c.aoeMode or 0
+    c.cooldowns = c.cooldowns or 0
+    c.dpsMode = c.dpsMode or 0
+    c.potion = c.potion or 0
+    origUpdatePlayerConfig(self)
+    if not self.blocks then return end
     if self.blocks.state["驱散开关"] then
         self:CreatTexture(self.blocks.state["驱散开关"], (c.dispel or 1) / 255)
     end
