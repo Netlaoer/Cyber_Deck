@@ -1,24 +1,21 @@
 # Cyber Deck（赛博义肢）
 
-**Fuyutsui 的功能扩展与数据覆盖模块**
+**独立的 WoW 辅助决策插件 — 基于 Fuyutsui 架构的完整移植**
+
+> 原 Fuyutsui 作者已不再维护 Python 决策层，Cyber Deck 将其 Python 支持移植至此并持续更新。当前不依赖 Fuyutsui，可独立运行。
+>
+> **注意**：核心模块 `logic_gui_Tools.py` 已通过 Cython 编译加密打包为 `Cyber_Deck.exe`，防止被特征检测。定期更新 exe 以确保安全。如需源码请联系作者。
 
 <!--
 AI_INSTRUCTION（AI 必读）：
 1. 在修改此项目任何代码之前，请完整阅读本文件，理解整体架构、所有函数、编码约定和开发规范。
 2. 本项目是一个 WoW 辅助决策系统，分为 Lua 插件层（游戏内）和 Python 决策层（外部程序）。
-3. 核心原则：不修改主插件（Fuyutsui）源码，所有扩展通过覆盖机制实现。
-4. 完成代码修改后，必须同步更新本文件中对应的章节：
-   - 新增/删除文件 → 更新"二、文件结构"
-   - 新增/修改函数 → 更新对应模块的函数表格
-   - 新增数据结构 → 更新"八、状态数据结构"
-   - 新增覆盖 → 更新"十、Cyber_Deck 覆盖机制"
-   - 新增功能 → 更新"十一~十五"对应章节
-5. Lua 覆盖模板：保存原始引用 → 覆盖函数 → 调用原始函数
-6. Python 覆盖模板：importlib 加载原始模块 → 包装函数 → 在 overrides.py 注册
-7. 像素块名称、状态字段、GUI 文本统一使用中文
-8. 新增像素块索引建议从 150+ 开始，避免与 config.yml 中已有索引冲突
+3. 核心原则：直接修改对应文件。Lua 端编辑 Cyber_Deck 目录下文件，Python 端编辑 Arasaka/ 下文件。
+4. 完成代码修改后，必须同步更新本文件中对应的章节。
+5. 像素块名称、状态字段、GUI 文本统一使用中文。
+6. 新增像素块索引建议从 150+ 开始，避免与 config.yml 中已有索引冲突。
 -->
-<!-- AI: Before making any changes to this project, read this entire file first. After completing code changes, you MUST update the corresponding sections in this file (function lists, file structure, data structures, etc.) to keep documentation in sync with code. -->
+<!-- AI: Before making any changes to this project, read this entire file first. After completing code changes, you MUST update the corresponding sections in this file. -->
 
 > 用户使用说明：[使用说明.md](使用说明.md)
 
@@ -26,923 +23,379 @@ AI_INSTRUCTION（AI 必读）：
 
 ## 一、项目概述
 
-**Fuyutsui（冬月）** 是一个魔兽世界（WoW）辅助决策系统，分为两层：
+**Cyber Deck（赛博义肢）** 是一个独立的 WoW 辅助决策系统，分为两层：
 
 1. **WoW 插件层（Lua）**：在游戏内运行，将玩家/目标/队伍/法术等状态编码为屏幕顶部像素条的颜色值
 2. **Python 决策层**：在外部运行，通过屏幕像素扫描读取游戏状态，根据职业逻辑做决策，通过后台按键（PostMessage）向游戏发送操作
 
-**Cyber_Deck** 是 Fuyutsui 的扩展插件，通过覆盖机制在不修改主插件代码的情况下扩展功能。
+> 本插件基于 [Fuyutsui](https://github.com/waynebian01/Fuyutsui/) 架构完整移植。原 Fuyutsui 作者已不再维护 Python 决策层，Cyber Deck 将其移植至此并持续更新。当前不依赖 Fuyutsui，可独立运行。
 
 ---
 
 ## 二、文件结构
 
-### Fuyutsui（主插件）
-
-```
-Fuyutsui/
-├── Fuyutsui.toc          # 插件描述 (v0.0.8, 接口 120000-120005)
-├── embeds.xml            # Ace3 库嵌入
-├── libs/                 # 第三方库（Ace3, LibRangeCheck-3.0）
-│
-├── core/                 # 核心模块
-│   ├── core.lua          # 插件初始化、AceDB、52个事件注册、斜杠命令、开关切换
-│   ├── config.lua        # spellsList(按职业分段的法术ID→像素索引映射)、
-│   │                     #   events(事件枚举)、heroTalents(英雄天赋)、
-│   │                     #   difficulty(难度ID)、actionbar(动作条)、
-│   │                     #   keymap(按键映射)、classMap(职业映射)、
-│   │                     #   bossID(Boss编号)、failed_spell_map(法术失败映射)
-│   ├── block.lua         # 像素色条创建（255个色块 + 法术充能进度条）
-│   ├── macro.lua         # 动态宏创建（队伍目标 @raid/party 智能切换）
-│   ├── keybinds.lua      # 扫描动作条按键绑定（修饰键×基础键组合）
-│   ├── auras.lua         # 逻辑光环状态机（按classId索引，追踪buff/debuff时间/层数）
-│   ├── quickbutton.lua   # 快捷切换按钮（爆发/AOE/输出模式/药水）
-│
-├── class/                # 职业模块（定义各职业的像素块布局 ClassBlocks）
-│   ├── Warrior.lua       # 战士 (classId=1)
-│   ├── Paladin.lua       # 圣骑士 (classId=2)
-│   ├── Hunter.lua        # 猎人 (classId=3)
-│   ├── Rogue.lua         # 盗贼 (classId=4)
-│   ├── Priest.lua        # 牧师 (classId=5)
-│   ├── DeathKnight.lua   # 死亡骑士 (classId=6)
-│   ├── Shaman.lua        # 萨满 (classId=7)
-│   ├── Mage.lua          # 法师 (classId=8)
-│   ├── Warlock.lua       # 术士 (classId=9)
-│   ├── Monk.lua          # 武僧 (classId=10)
-│   ├── Druid.lua         # 德鲁伊 (classId=11)
-│   ├── DemonHunter.lua   # 恶魔猎手 (classId=12)
-│   └── Evoker.lua        # 唤魔师 (classId=13)
-│
-├── main.lua              # 事件处理函数 + OnUpdate 帧循环（1723行）
-├── gui.lua               # Ace3 配置界面（/fu gui 像素块调试/查看）
-│
-└── 请将我移走并重命名/     # Python 决策层（已移至 Cyber_Deck/Arasaka/）
-```
-
-### Cyber_Deck（扩展插件）
-
 ```
 Cyber_Deck/
-├── Cyber_Deck.toc          # 插件定义（## Dependencies: Fuyutsui）
-├── init.lua                # 覆盖 OnEnable，进入世界时重新初始化（守卫防重复）
-├── main.lua                # 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-├── logic_gui_Tools.py      # 主 GUI 启动器（闭源，Cython 编译加密，防特征检测，源码联系作者）
-├── Cyber_Deck.exe          # 打包后的独立可执行文件（每次打包 hash 不同，无需 Python 环境）
-├── gui_window_state.json   # GUI 窗口状态持久化（位置、大小等）
+├── Cyber_Deck.toc          # 插件定义（v0.0.1, 接口 120000-120005）
+├── embeds.xml              # Ace3 库嵌入
+├── logic_gui_Tools.py      # 主 GUI 启动器（闭源，Cython 编译加密）
+├── Cyber_Deck.exe          # 打包后的独立可执行文件（无需 Python 环境）
+├── gui_window_state.json   # GUI 窗口状态持久化
 ├── README.md               # 完整技术文档（本文件）
 ├── 使用说明.md              # 用户使用说明
 │
-├── core/                   # Lua 核心覆盖模块
-│   ├── core.lua            # 驱散开关（SwitchDispel 扩展 + db 注册）
-│   ├── config.lua          # 配置覆盖（当前为空占位文件）
-│   ├── quickbutton.lua     # 四按钮可拖拽面板（爆发/AOE/逻辑/驱散）
+├── libs/                   # 第三方库（Ace3 系列, LibRangeCheck-3.0）
 │
-├── class/                  # Lua 职业数据块扩展
-│   └── Paladin.lua         # 神圣专精像素块扩展 + MacrosList 覆盖（焦点目标施法）
+├── core/                   # Lua 核心模块
+│   ├── core.lua            # 插件初始化、AceDB、事件注册、斜杠命令、开关切换
+│   ├── config.lua          # spellsList/events/heroTalents/difficulty/keymap 等配置
+│   ├── block.lua           # 像素色条创建（255个色块 + 法术充能进度条）
+│   ├── macro.lua           # 动态宏创建（@raid/party 智能切换）
+│   ├── keybinds.lua        # 扫描动作条按键绑定
+│   ├── auras.lua           # 光环状态机（按classId索引）
+│   ├── quickbutton.lua     # 四按钮可拖拽面板（爆发/AOE/输出模式/驱散）
+│   └── Spell_Misc_EmotionHappy.blp  # 插件图标
 │
-├── Arasaka/                # Python 主工具（原主插件内的 Python 决策层，复制至此）
-│   ├── config.yml          # 像素块配置（state/spells/groups 定义，按职业ID分段）
-│   ├── utils.py            # 核心工具库（配置加载/缓存、keymap 加载、按键发送 PostMessage、单位查询）
-│   ├── GetPixels.py        # 屏幕像素扫描引擎（mss 截图 + RGB 解码 → state_dict）
-│   ├── logic_gui.py        # 备用 GUI 入口（无覆盖支持，主插件原始版本，仅用于对比/回退）
-│   ├── logic_nogui.py      # 无 GUI 终端版本（调试用，直接终端运行）
-│   ├── logic_nogui_launch.py # 无 GUI 启动器（自动检测 WoW 路径，启动 logic_nogui）
-│   ├── logic.bat           # 一键启动批处理（调用 logic_nogui_launch.py）
-│   ├── requirements.txt    # Python 依赖（mss, customtkinter, pyyaml 等）
-│   ├── class/              # 职业逻辑模块（13 个职业 + __init__.py）
-│   │   ├── __init__.py     # 模块初始化
-│   │   ├── warrior_logic.py
-│   │   ├── paladin_logic.py
-│   │   ├── hunter_logic.py
-│   │   ├── ...             # 其余 10 个职业
-│   ├── keymap/             # 按键映射（13 个职业 .yml + 1 个默认 keymap.yml）
-│   │   ├── keymap.yml      # 默认/兜底按键映射
-│   │   ├── warrior.yml
-│   │   ├── paladin.yml
-│   │   ├── ...             # 其余 11 个职业
-│   └── other/              # 调试工具
-│       ├── GetRGB.py       # 获取鼠标位置像素 RGB 值
-│       ├── GetInfo.py      # 获取完整 state_dict 并打印
-│       └── hex_to_decode.py # 十六进制颜色解码
+├── class/                  # 职业模块（13个职业的像素块布局 ClassBlocks）
+│   ├── Paladin.lua         # 圣骑士 — 含驱散开关/5码敌人/焦点施法宏
+│   └── ...                 # Warrior/Hunter/Rogue/Priest/DK/Shaman/Mage/
+│                           #   Warlock/Monk/Druid/DH/Evoker
 │
-├── laoer/                  # 覆盖模块（自动检测，含 overrides.py 的任何同级目录）
-│   ├── overrides.py        # 覆盖加载引擎（config 深度合并 + 模块覆盖 + keymap 追加）
-│   ├── config.yml          # 覆盖配置（追加驱散开关/5码敌人字段，Holy 专精 step 48/49）
-│   ├── class/
-│   │   └── paladin_logic.py  # 覆盖圣骑士逻辑（驱散开关 + 目标类型/距离绕过 + 制裁固定键）
-│   ├── keymap/
-│   │   └── paladin.yml     # 圣骑士扩展键位（当前为空占位文件，预留扩展）
-│   └── other/
-│       └── icon.ico        # 程序图标（赛博朋克风格）
+├── main.lua                # 事件处理函数 + OnUpdate 帧循环
+├── gui.lua                 # Ace3 配置界面（/fu gui 像素块调试）
 │
-├── pack/                   # 打包工具（Cython 编译 + PyInstaller + UPX 压缩 → 加密 exe）
-│   ├── launcher.py          # exe 启动器（加载 .pyd）
-│   ├── 打包exe.py           # 一键打包脚本（编译 .pyd → 打包 exe → 清理残留）
-│   ├── 打包exe.bat          # 批处理入口
-│   └── upx.exe              # UPX 压缩
+├── Arasaka/                # Python 决策层
+│   ├── config.yml          # 像素块配置（按职业ID分段）
+│   ├── utils.py            # 核心工具库（配置加载、按键发送、单位查询）
+│   ├── GetPixels.py        # 屏幕像素扫描引擎（mss 截图 + RGB 解码）
+│   ├── class/              # 职业逻辑模块（14个.py，13职业 + __init__）
+│   │   ├── paladin_logic.py   # 圣骑士（含驱散开关+Holy进攻+5码判断）
+│   │   └── ...             # 其余12个职业
+│   ├── keymap/             # 按键映射（14个.yml）
+│   └── other/              # 调试工具 + icon.ico
+│
+└── pack/                   # 打包工具（Cython + PyInstaller + UPX → exe）
+    ├── launcher.py
+    ├── 打包exe.py
+    ├── 打包exe.bat
+    └── upx.exe
 ```
 
-> **安全说明**：`logic_gui_Tools.py` 为核心模块，已通过 Cython 编译为二进制 `.pyd` 后打包进 `Cyber_Deck.exe`。每次打包会注入随机数据确保 exe 文件 hash 不同，防止被特征检测。定期重新打包更新 exe。如需源码请联系作者。
+> **安全说明**：`logic_gui_Tools.py` 通过 Cython 编译为 `.pyd` 后打包进 `Cyber_Deck.exe`。每次打包注入随机数据确保 hash 不同，防特征检测。
 >
-> **启动方式**：直接双击 `Cyber_Deck.exe`，无需 Python 环境。
+> **动态加载**：`Arasaka/` 下模块通过 `importlib.import_module` 从磁盘加载，修改 Python 文件后点击 GUI"重载"即生效。
 >
-> **动态加载机制**：`utils.py`、`GetPixels.py`、`class/` 等模块通过 `importlib.import_module` 从磁盘 `Arasaka/` 目录动态加载，修改 Python 文件后点击 GUI 中的"重载"按钮即可生效，无需重启程序。
->
-> **路径定位**：程序通过以下优先级查找 `Arasaka/` 目录：
-> 1. 脚本同级目录下的 `Arasaka/`
-> 2. Windows 注册表中的 WoW 安装路径 → `Interface/AddOns/Cyber_Deck/Arasaka/`
-> 3. 运行中的 WoW 进程路径反推
->
-> **覆盖模块发现**：程序自动扫描同级目录，任何含 `overrides.py` 的文件夹都会被检测为覆盖模块（如 `laoer/`）。也可通过环境变量 `CYBER_DECK_OVERRIDE` 手动指定路径。
+> **路径定位**：1. 脚本同级 `Arasaka/` → 2. 注册表 WoW 路径 → 3. WoW 进程路径反推
 
 ---
 
 ## 三、加载顺序
 
-### Lua 端
+### Lua 端（按 Cyber_Deck.toc 顺序）
 
-WoW 按 TOC 文件中的 `## Dependencies` 和文件列表顺序加载。Fuyutsui 先加载，Cyber_Deck 后加载。
-
-**Fuyutsui 加载顺序**：
 1. `embeds.xml` + `Libs/LibRangeCheck-3.0`
-2. `core/core.lua` → `core/quickbutton.lua` → `core/config.lua` → `core/block.lua` → `core/macro.lua` → `core/keybinds.lua` → `core/auras.lua`
-3. 13 个 `class/*.lua` 文件
+2. `core/core.lua` → `quickbutton.lua` → `config.lua` → `block.lua` → `macro.lua` → `keybinds.lua` → `auras.lua`
+3. 13 个 `class/*.lua`（Warrior → Paladin → ... → Evoker）
 4. `main.lua` → `gui.lua`
-
-**Cyber_Deck 加载顺序**（在 Fuyutsui 之后）：
-1. `init.lua` — 覆盖 OnEnable
-2. `main.lua` — 覆盖 main.lua 函数（updatePlayerConfig、updateEnemyCount、updateUnitCastingOrChannelingInfo）
-3. `core\core.lua` — 驱散开关扩展 + db 注册
-4. `class\Paladin.lua` — 圣骑士数据块 + MacrosList 覆盖
-5. `core\config.lua` — 占位
-6. `core\quickbutton.lua` — 四按钮面板
 
 ### Python 端
 
-`logic_gui_Tools.py` 是主程序入口（闭源），启动时：
-1. **定位 Arasaka/ 目录**：优先从脚本同级查找，再通过 Windows 注册表读取 WoW 安装路径定位，最后从运行中的 WoW 进程路径反推
-2. 将 `Arasaka/` 目录添加到 `sys.path`
-3. `importlib.import_module("utils")` + `importlib.import_module("GetPixels")` — 动态导入，从磁盘读取最新代码
-4. `_resolve_override_base()` — 自动扫描同级目录寻找含 `overrides.py` 的覆盖模块（如 `laoer/`），存在则 `import + apply_overrides()` — monkey-patch 配置/模块/键位
-5. `_build_class_module_map()` — 从 config.yml keymap 字段 + class/ 目录构建职业ID→模块名映射
-6. `create_gui()` — 创建 GUI，启动按键检测线程和逻辑执行线程
-
-> 覆盖模块（`laoer/`）通过扫描脚本同级目录自动发现，无论文件夹名叫什么，只要含 `overrides.py` 就会被检测到。也可通过环境变量 `CYBER_DECK_OVERRIDE` 手动指定路径。
+`logic_gui_Tools.py` 启动时：
+1. 定位 `Arasaka/` 目录并加入 `sys.path`
+2. `importlib.import_module("utils")` + `importlib.import_module("GetPixels")`
+3. `_build_class_module_map()` — 构建职业ID→模块名映射
+4. `create_gui()` — 创建 GUI，启动按键检测和逻辑执行线程
 
 ---
 
 ## 四、核心数据流
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     WoW 游戏客户端                               │
-│                                                                 │
-│  游戏事件 → Fuyutsui Lua 插件 → 更新状态变量 → 编码为像素颜色     │
-│  (UNIT_HEALTH, SPELL_UPDATE_COOLDOWN, etc.)                    │
-│                                                                 │
-│  屏幕顶部 255 个像素色块 (FuyutsuiColorBars)                    │
-│  屏幕第二行充能进度条 (FuyutsuiCountBars)                        │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ 像素颜色 (RGB)
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Python 决策层                                │
-│                                                                 │
-│  GetPixels.py 扫描屏幕 → 构建 state_dict (字典)                  │
-│       │                                                        │
-│       ▼                                                        │
-│  职业逻辑 class/*_logic.py                                      │
-│  run_xxx_logic(state_dict, spec_name)                          │
-│       │                                                        │
-│       ▼                                                        │
-│  返回 (action_hotkey, current_step, unit_info)                  │
-│       │                                                        │
-│       ▼                                                        │
-│  utils.send_key_to_wow() → PostMessage 后台按键发送到 WoW 窗口   │
-└─────────────────────────────────────────────────────────────────┘
+WoW 游戏事件 → Lua 插件 → 编码为像素颜色 → 屏幕顶部 255 像素色块
+                                              ↓ 像素扫描 (RGB)
+GetPixels.py → state_dict → 职业逻辑 → (hotkey, step, info)
+                                              ↓
+utils.send_key_to_wow() → PostMessage → WoW 窗口
 ```
 
 ---
 
 ## 五、像素编码原理
 
-### 顶部长条（FuyutsuiColorBars）
-
-- **255 个像素**，每个像素宽度 = 屏幕宽度 / 255，高度 2px
+- **255 个像素**，宽 = 屏幕宽度/255，高 2px
 - 颜色编码：`RGB = (0, index/255, value/255)`
-  - **G 通道** = 索引号（1~255），标识这个像素代表什么数据
-  - **B 通道** = 数值（0~1），通过颜色曲线映射实现非线性编码
-- 索引由 `config.yml` 中 `blocks.state`、`blocks.spells`、`blocks.auras` 等定义
-
-### 颜色曲线（ColorCurve）
-
-- 使用 WoW API `C_CurveUtil.CreateColorCurve` 创建
-- 核心函数 `creatColorCurveScaling(b)` 在 main.lua 中
-  - b > 100：线性映射 `b/255`
-  - b <= 100：三段折线（`0→黑色`，`1/255→目标`，`b/255→更高`）
-- 缓存在 `curveCache` 中避免重复创建
-- 另有 `creatColorCurve(point, b)` 在 core.lua 中创建简单线性曲线
-
-### 法术冷却编码
-
-- `blocks.spells[spellID]` 定义了每个法术的 index
-- 冷却值 0 = 就绪，255 = 不可用/不存在
-- 中间值通过颜色曲线 API 映射
-
-### 充能进度条（FuyutsuiCountBars）
-
-- 第二行，255 个像素宽度，高度 20px
-- 使用 `CreateAutoLayoutBar()` 创建 StatusBar 显示充能/使用次数
-- 自动布局，spellId 去重
-
-### 左边界标记
-
-- 充能进度条左边界有一对红/白标记像素
-- Python 扫描时通过这对标记定位进度条的起始位置
+  - G 通道 = 索引号（1~255），标识数据含义
+  - B 通道 = 数值（0~1），通过颜色曲线映射
+- 充能进度条：第二行，255 像素宽，20px 高
+- 左边界红/白标记对用于 Python 定位
 
 ---
 
 ## 六、Lua 端核心机制
 
-### core.lua — 初始化与事件注册
+### 全局表
 
-**全局表**：
 ```lua
-Fuyutsui.state       -- 玩家状态 (classId, className, classFilename, specName, specID, ...)
+Fuyutsui.state       -- 玩家状态 (classId, className, specName, specID, ...)
 Fuyutsui.blocks      -- 当前加载的像素块配置
 Fuyutsui.target      -- 目标信息
-Fuyutsui.nameplate   -- 姓名版信息
-Fuyutsui.group       -- 队伍单位信息 { [unit] = { index, healthPercent, role, dispel, curve, ... } }
+Fuyutsui.group       -- 队伍单位信息
 Fuyutsui.groupList   -- 队伍单位列表
 Fuyutsui.defaults    -- AceDB 默认值
 Fuyutsui.keybindings -- 按键绑定映射
 Fuyutsui.timeElapsed -- OnUpdate 计时器
 ```
 
-**AceDB 保存变量**（`FuyutsuiADB`）：
+### AceDB 保存变量（`FuyutsuiADB`）
+
 ```lua
-char = { level, aoeMode(0=自动/1=单体), cooldowns(爆发), dpsMode(0=官方一键辅助/1=手动逻辑),
-         delay, potion, quickButtonCX, quickButtonCY, quickButtonShow }
+char = { level, aoeMode, cooldowns, dpsMode, delay, potion,
+         quickButtonCX, quickButtonCY, quickButtonShow, dispel }
 ```
 
-**关键函数**：
+### 关键函数表
 
-| 函数 | 说明 |
-|------|------|
-| `F:OnInitialize()` | AceDB 初始化，注册斜杠命令 `/fu` |
-| `F:OnEnable()` | 获取专精信息、加载 blocks、读取按键绑定、注册 52 个事件 |
-| `F:SwitchCooldown()` | 切换爆发开关 |
-| `F:SwitchAoeMode()` | 切换 AOE 模式 |
-| `F:SwitchDpsMode()` | 切换输出模式 |
-| `F:SwitchDelay()` | 更新延迟标志像素 |
-| `F:SwitchPotion()` | 切换药水开关 |
-| `F:SlashCommand(input)` | 斜杠命令分发（cd/aoemode/dpsmode/potion/delay/help/config/gui 等） |
-| `F:IterateGroupMembers(reversed, forceParty)` | 迭代队伍成员的迭代器 |
-| `F:creatColorCurve(point, b)` | 创建线性颜色曲线 |
-| `SetTestSecret(set)` | 全局函数，设置秘密值限制的 CVars |
+| 函数 | 所在文件 | 说明 |
+|------|---------|------|
+| `F:OnInitialize()` | core.lua | AceDB 初始化，注册 `/fu` 命令 |
+| `F:OnEnable()` | core.lua | 获取专精、加载 blocks、注册事件 |
+| `F:SwitchCooldown()` | core.lua | 切换爆发开关 |
+| `F:SwitchAoeMode()` | core.lua | 切换 AOE 模式 |
+| `F:SwitchDpsMode()` | core.lua | 切换输出模式 |
+| `F:SwitchDispel()` | core.lua | 切换驱散开关 |
+| `F:OnUpdate(elapsed)` | main.lua | 帧循环（高频+低频轮询） |
+| `F:updatePlayerConfig()` | main.lua | 初始化驱散开关等像素 |
+| `F:updateEnemyCount()` | main.lua | 敌人计数（含5码姓名版） |
+| `CreatTexture(block, value)` | main.lua | 写入像素块 |
+| `creatColorCurveScaling(b)` | main.lua | 非线性颜色曲线编码 |
+| `InitQuickToggleButton()` | quickbutton.lua | 四按钮面板 |
+| `updateAura()` | auras.lua | 光环倒计时 |
+| `updateAuraBlocks()` | auras.lua | 光环像素更新 |
 
-**斜杠命令**：`/fu` 或 `/Fuyutsui`
-- `cd [on/off]` — 爆发开关
-- `aoemode [auto/aoe]` — AOE 模式
-- `dpsmode [manual/assistant]` — 输出模式
-- `potion [on/off]` — 药水开关
-- `delay [秒]` — 延迟值
-- `help` — 帮助信息
-- `options` / `config` — 打开配置面板
-- `gui` — 打开像素块调试界面
-- `enable` / `disable` — 启用/禁用插件
-- `message [文本]` — 显示聊天消息
-
-### main.lua — 事件处理与帧循环
-
-**注册的 52 个事件**：
-`ZONE_CHANGED`, `ZONE_CHANGED_INDOORS`, `PLAYER_ENTERING_WORLD`, `PLAYER_TALENT_UPDATE`, `PLAYER_DEAD`, `PLAYER_ALIVE`, `PLAYER_UNGHOST`, `PLAYER_MOUNT_DISPLAY_CHANGED`, `PLAYER_REGEN_DISABLED`, `PLAYER_REGEN_ENABLED`, `PLAYER_STARTED_MOVING`, `PLAYER_STOPPED_MOVING`, `UNIT_SPELLCAST_SENT`, `UNIT_SPELLCAST_START`, `UNIT_SPELLCAST_STOP`, `UNIT_SPELLCAST_CHANNEL_START`, `UNIT_SPELLCAST_CHANNEL_STOP`, `UNIT_SPELLCAST_EMPOWER_START`, `UNIT_SPELLCAST_EMPOWER_STOP`, `UNIT_SPELLCAST_SUCCEEDED`, `UNIT_SPELLCAST_FAILED`, `UNIT_POWER_UPDATE`, `UNIT_HEALTH`, `UNIT_MAXHEALTH`, `UNIT_HEAL_ABSORB_AMOUNT_CHANGED`, `UNIT_HEAL_PREDICTION`, `SPELL_UPDATE_USES`, `GROUP_ROSTER_UPDATE`, `UNIT_DIED`, `SPELL_RANGE_CHECK_UPDATE`, `ACTION_RANGE_CHECK_UPDATE`, `UI_ERROR_MESSAGE`, `PLAYER_TARGET_CHANGED`, `NAME_PLATE_UNIT_ADDED`, `NAME_PLATE_UNIT_REMOVED`, `UPDATE_SHAPESHIFT_FORM`, `UPDATE_SHAPESHIFT_FORMS`, `ENCOUNTER_START`, `ENCOUNTER_END`, `UNIT_AURA`, `SPELL_UPDATE_COOLDOWN`, `SPELL_UPDATE_ICON`, `COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED`, `SPELL_ACTIVATION_OVERLAY_GLOW_SHOW`, `SPELL_ACTIVATION_OVERLAY_GLOW_HIDE`, `SPELL_ACTIVATION_OVERLAY_SHOW`, `SPELL_ACTIVATION_OVERLAY_HIDE`, `UPDATE_BINDINGS`, `SPELLS_CHANGED`, `ACTIONBAR_HIDEGRID`, `ACTIONBAR_SHOWGRID`, `SPELL_UPDATE_CHARGES`
-
-**关键事件处理函数**：
-
-| 事件 | 函数 | 说明 |
-|------|------|------|
-| `UNIT_HEALTH` | `F:UNIT_HEALTH(_, unit)` | 玩家/目标/队伍血量更新 |
-| `UNIT_MAXHEALTH` | `F:UNIT_MAXHEALTH(_, unit)` | 最大血量变化时更新 |
-| `SPELL_UPDATE_COOLDOWN` | 遍历 spells 表 | 法术冷却更新 |
-| `SPELL_UPDATE_CHARGES` | 遍历 spells 表 | 法术充能更新 |
-| `SPELL_UPDATE_USES` | 遍历 spells 表 | 法术使用次数更新 |
-| `UNIT_SPELLCAST_START` | `F:updatePlayerCastingInfo()` | 施法信息 |
-| `UNIT_SPELLCAST_CHANNEL_START` | `F:updatePlayerChannelingInfo()` | 引导信息 |
-| `UNIT_SPELLCAST_EMPOWER_START` | `F:updatePlayerEmpowerInfo()` | 蓄力信息 |
-| `UNIT_SPELLCAST_SUCCEEDED` | `F:UNIT_SPELLCAST_SUCCEEDED()` | 施法成功处理 |
-| `UNIT_SPELLCAST_FAILED` | `F:UNIT_SPELLCAST_FAILED()` | 施法失败处理 |
-| `UNIT_AURA` | `F:UNIT_AURA(_, unit)` | 队伍成员光环变化 |
-| `GROUP_ROSTER_UPDATE` | `F:GROUP_ROSTER_UPDATE()` | 队伍成员变化 |
-| `PLAYER_TARGET_CHANGED` | `F:PLAYER_TARGET_CHANGED()` | 目标切换 |
-| `PLAYER_REGEN_DISABLED/ENABLED` | 战斗状态更新 | 进出战斗 |
-| `PLAYER_ENTERING_WORLD` | `F:PLAYER_ENTERING_WORLD()` | 进入世界初始化 |
-| `PLAYER_DEAD/ALIVE/UNGHOST` | 死亡状态更新 | 死亡/复活 |
-| `PLAYER_STARTED/STOPPED_MOVING` | 移动状态更新 | |
-| `PLAYER_MOUNT_DISPLAY_CHANGED` | 坐骑状态更新 | |
-| `UPDATE_SHAPESHIFT_FORM` | `F:UPDATE_SHAPESHIFT_FORM()` | 形态切换 |
-| `ENCOUNTER_START/END` | Boss 战更新 | |
-| `ZONE_CHANGED*` | `F:ZONE_CHANGED()` | 区域变化 |
-
-**OnUpdate 帧循环**（`F:OnUpdate(elapsed)`）：
-
-每帧执行（高频）：
-- `updatePlayerCastingInfo()` — 施法信息（倒计时）
-- `updatePlayerChannelingInfo()` — 引导信息（倒计时）
-- `updatePlayerEmpowerInfo()` — 蓄力信息（层数）
-- `updateGroupInRange()` — 队伍距离
-- `updateAura()` — 光环剩余时间倒计时（遍历所有追踪的光环）
-
-每 0.2 秒执行（低频，通过 `timeElapsed` 累加控制）：
-- `updateSpellCooldown()` — 法术冷却
-- `updateAuraBlocks()` — 光环像素更新
-- `updatePlayerAssistant()` — 一键辅助
-- `updateRune()` — 符文（死亡骑士）
-- `updateTargetRangeBlock()` — 目标距离
-- `updateEnemyCount()` — 敌人数量
-- `updateItemCoolDown()` — 物品冷却
-
-**其他关键函数**（main.lua）：
-
-| 函数 | 说明 |
-|------|------|
-| `updatePlayerHealth()` | 更新玩家血量像素（通过 UnitHealthPercent + CreatTexture） |
-| `updateTargetHealth()` | 更新目标血量像素 |
-| `updateUnitHealthInfo(unit)` | 更新队伍成员血量（含 inComingHeals 和 healAbsorb 曲线） |
-| `updateUnitDeathByHealthInfo(unit)` | 根据血量判断队伍成员死亡状态 |
-| `CreatTexture(block, value)` | 将数值写入像素块（设置颜色） |
-| `creatColorCurveScaling(b)` | 创建非线性颜色曲线（核心编码函数） |
-| `GetCharacterSpecInfo()` | 获取角色专精信息 |
-| `updateSpellKnown()` | 更新法术已知状态 |
-| `updatePlayerBlocks()` | 更新玩家像素块布局 |
-| `updateAuraIconByEnteringWorld()` | 进入世界时刷新光环 |
-
-### config.lua — 配置数据
-
-**核心数据表**：
-- `Fuyutsui.spellsList` — 法术 ID → `{ index, failed?, name }` 映射，按职业分段
-- `Fuyutsui.events` — 事件名称枚举
-- `Fuyutsui.heroTalents` — 英雄天赋 `{ 1="名称A", 2="名称B", 3="名称C" }`
-- `Fuyutsui.difficulty` — 难度 ID 映射
-- `Fuyutsui.actionbar` — 动作条配置
-- `Fuyutsui.keymap` — 按键映射表
-- `Fuyutsui.classMap` — 职业名称/ID 映射
-- `Fuyutsui.bossID` — Boss 编号映射（0=无, 1-13=团本, 51-79=大秘）
-- `Fuyutsui.failed_spell_map` — 法术失败编码映射
-
-### block.lua — 像素块创建
-
-- `updatePlayerBlocks()` — 根据 config.yml 创建玩家状态像素块
-- 创建 `FuyutsuiColorBars` Frame（255 个 2px 高的色块）
-- 创建 `FuyutsuiCountBars` Frame（充能进度条）
-- `CreateAutoLayoutBar()` — 自动布局法术充能/使用次数 StatusBar
-
-### macro.lua — 宏系统
-
-- 为每个技能创建带目标条件判断的动态宏
-- 支持 `@raid`、`@party`、`@nogroup` 三种模式自动切换
-- 斗篷状态变化时重建所有宏
-- 斜杠命令 `/fu macro rebuild` 手动重建
-
-### keybinds.lua — 按键绑定
-
-- 扫描所有动作条的按键绑定
-- 支持修饰键组合（CTRL/ALT/SHIFT × 36 个基础键）
-- 生成 `Fuyutsui.keybindings` 表供 Python 端读取
-
-### auras.lua — 光环状态机
-
-- 按 `classId` 索引的光环定义表
-- 每个光环追踪：`remaining`、`duration`、`expirationTime`、`count`、`countMin`、`countMax`
-- 触发事件映射：`addAuras`、`updateAuras`、`removeAuras`
-- 6 种事件类型：法术冷却、施法成功、图标改变、法术覆盖、屏幕提示显示/隐藏
-- `updateAura()` 在 OnUpdate 中每帧倒计时
-- `updateAuraBlocks()` 每 0.2 秒更新光环像素
-
-### quickbutton.lua — 快捷按钮
-
-- `InitQuickToggleButton()` — 创建单个切换按钮（原始实现）
-- 点击切换爆发/AOE/输出模式
-- 位置持久化到 SavedVariables
-
-### gui.lua — 配置界面
-
-- Ace3 AceConfigDialog 驱动
-- `/fu gui` 打开像素块调试界面
-- 显示所有像素索引对应的名称和当前值
-
-### class/*.lua — 职业像素块布局
-
-- 每个文件定义 `Fuyutsui.ClassBlocks[classId]` 表
-- 表结构：`{ state = {...}, auras = {...}, spells = {...}, groups = {...} }`
-- 定义了该职业需要编码到像素的所有状态、法术、光环、队伍信息
+**斜杠命令**：`/fu cd/aoemode/dpsmode/potion/delay/gui/macro rebuild/message/help`
 
 ---
 
 ## 七、Python 端核心机制
 
-### logic_gui_Tools.py — 主 GUI + 调度核心（根目录入口）
-
-**全局变量**：
-- `_logic_modules` — 模块缓存 dict
-- `_CLASS_ID_TO_MODULE` — 职业ID → 模块名映射
-- `LOGIC_FUNCS_BY_CLASS` — 职业ID → 逻辑函数引用
-- `TOGGLE_INTERVAL` = 0.05 — 按键检测休眠间隔（秒）
-- `LOGIC_INTERVAL` = 0.2 — 状态扫描间隔（秒）
-- `GUI_UPDATE_MS` = 100 — GUI 刷新间隔（毫秒）
-- `_toggle_key_str` — 当前绑定按键（默认 "XBUTTON1"）
-- `_send_mode` — 发送模式（switch/click/hold）
-- `_state_lock` — 线程锁
-- `_state_dict` — 最新游戏状态字典
-
-**关键函数**：
+### logic_gui_Tools.py（闭源）
 
 | 函数 | 说明 |
 |------|------|
-| `_build_class_module_map()` | 从 config.yml + class/ 目录构建职业ID→模块名映射 |
-| `_load_logic_module(name)` | 从缓存获取模块中的逻辑函数 |
-| `reload_logic_modules()` | 热重载所有逻辑模块（先 `reload` 主插件原始模块，再重载覆盖模块） |
-| `_default_logic(state_dict, spec_name)` | 默认空逻辑（无匹配职业时使用） |
-| `_get_config_cached()` | 缓存加载 config.yml |
-| `get_group_config_for_class_spec(class_id, spec_id)` | 获取队伍表格配置 |
-| `get_class_spec_view_data(class_id, spec_id)` | 聚合返回状态/队伍/法术配置 |
-| `create_gui()` | **主函数**：创建 GUI，启动所有线程，进入 mainloop |
+| `_build_class_module_map()` | 构建职业ID→模块名映射 |
+| `reload_logic_modules()` | 热重载所有逻辑模块 |
+| `create_gui()` | 创建 GUI，启动线程，进入 mainloop |
 
-**线程模型**：
-1. **按键检测线程** `_key_detect_loop()`：50ms 轮询，检测绑定按键状态
-2. **逻辑执行线程** `_run_logic_loop()`：200ms 间隔，扫描状态→调用职业逻辑→发送按键
-3. **主线程**：GUI mainloop，100ms 刷新状态面板
+**线程模型**：按键检测 50ms / 逻辑执行 200ms / GUI 刷新 100ms
 
-**GUI 结构**：
-- 自定义标题栏（赛博朋克风格）
-- 顶部面板：职业名称、专精、绑定按钮、重载按钮
-- 状态面板：根据 config 动态生成键值对网格
-- 冷却面板：根据 config spells 动态生成
-- 队伍弹窗：Toplevel 窗口显示 group 数据
-- 动画系统：背景呼吸、面板流光、标题闪烁
-
-### GetPixels.py — 屏幕像素扫描引擎
-
-**核心函数**：
+### utils.py
 
 | 函数 | 说明 |
 |------|------|
-| `get_info()` | 单次扫描，返回完整 state_dict |
-| `scan_screen_data()` | 扫描指定区域像素数据 |
+| `load_config()` | 加载 config.yml |
+| `load_keymap()` | 加载按键映射 |
+| `get_hotkey(unit, spell)` | 查找按键 |
+| `get_lowest_health_unit(state_dict, threshold)` | 最低血量队友 |
+| `get_unit_with_dispel_type(state_dict, dispel_type)` | 需驱散队友 |
+| `send_key_to_wow(hotkey, mode)` | PostMessage 发送按键 |
 
-**扫描流程**：
-1. 使用 `mss` 库截取屏幕顶部区域
-2. 扫描顶部长条：逐像素读取 RGB 值
-3. G 通道 = 索引，B 通道 = 数值（反算颜色曲线）
-4. 扫描第二行充能进度条
-5. 扫描左边界标记（红/白起始对）定位 bar 数据
-6. 按 `config.yml` 定义的结构组装为 `state_dict`
-
-### utils.py — 核心工具库
-
-**配置函数**：
-
-| 函数 | 说明 |
-|------|------|
-| `load_config()` | 加载 config.yml（会被 overrides.py monkey-patch） |
-| `load_keymap()` | 加载按键映射 yml |
-
-**查询函数**：
-
-| 函数 | 说明 |
-|------|------|
-| `get_hotkey(unit, spell)` | 查找 (单位, 技能) 对应的按键 |
-| `get_lowest_health_unit(state_dict, threshold)` | 找血量最低的队友 |
-| `get_lowest_health_unit_with_aura(state_dict, aura_name, threshold)` | 找有指定光环且血量最低的队友 |
-| `get_lowest_health_unit_without_aura(state_dict, aura_name, threshold)` | 找无指定光环且血量最低的队友 |
-| `get_lowest_health_unit_with_any_aura(state_dict, *aura_names, threshold)` | 找有任意指定光环且血量最低的队友 |
-| `get_lowest_health_unit_with_aura_count(state_dict, aura_name, count, threshold)` | 找指定光环层数且血量最低的队友 |
-| `get_unit_with_dispel_type(state_dict, dispel_type)` | 找需要驱散的队友 |
-| `count_units_below_health(state_dict, threshold)` | 统计低血量人数 |
-
-**按键函数**：
-
-| 函数 | 说明 |
-|------|------|
-| `send_key_to_wow(hotkey, mode)` | 发送按键到 WoW（PostMessage） |
-| `_get_vk(key_name)` | 按键名称转虚拟键码（私有函数） |
-
-**按键映射优先级**（高→低）：
-1. `laoer/keymap/*.yml` 覆盖目录（追加到 keymap，新 ID 不会替换已有技能）
-2. `Arasaka/keymap/*.yml` 主目录
-3. `laoer/config.yml` 中的 keymap 字段（追加到 keymap）
-4. `Arasaka/config.yml` 基座配置
-
-### 职业逻辑模块统一接口
+### 职业逻辑统一接口
 
 ```python
 def run_xxx_logic(state_dict: dict, spec_name: str) -> tuple:
-    """
-    参数:
-        state_dict: 游戏状态字典（完整字段见第八节）
-        spec_name: 专精名称 ("神圣", "防护", "惩戒", etc.)
-    返回:
-        action_hotkey: 要发送的按键字符串，或 None 表示无操作
-        current_step: 当前步骤描述字符串（用于 GUI 显示）
-        unit_info: 附加信息字典（用于 GUI 显示）
-    """
+    """返回 (action_hotkey, current_step, unit_info)，无操作时 action_hotkey = None"""
 ```
-
-所有 12 个职业逻辑文件都遵循此接口。内部通常使用 `if/elif` 优先级链：
-1. 检查死亡/聊天框打开/坐骑等跳过条件
-2. 检查爆发/AOE/驱散等高优先级操作
-3. 检查目标条件（距离、类型）
-4. 按优先级匹配法术（通过 `spells["法术名"] == 0` 判断就绪）
-5. 使用 `get_hotkey(单位, 法术名)` 获取按键
 
 ---
 
 ## 八、状态数据结构
 
-### Lua 端全局表
-
-```lua
-Fuyutsui.state = { classId, className, classFilename, specName, specID, ... }
-
-Fuyutsui.blocks = {
-    state = { ["生命值"] = index, ["爆发开关"] = index, ... },    -- 玩家状态像素索引
-    auras = { [slotIndex] = { auraName, showKey } },              -- 光环像素索引
-    spells = { [spellID] = { index, name, charge, inSpellBook } }, -- 法术冷却像素索引
-    groups = { start, num, healthPercent, role, dispel, auras },   -- 队伍像素布局
-}
-
-Fuyutsui.target = { healthPercent, ... }
-Fuyutsui.group = { [unit] = { index, healthPercent, role, dispel, curve, ... } }
-```
-
-### Python 端 state_dict（扫描结果）
-
 ```python
 state_dict = {
-    "职业": int,          # 职业ID (1=战士, 2=圣骑士, ..., 13=唤魔师)
+    "职业": int,          # 1-13
     "专精": str,          # 专精名称
-    "生命值": float,      # 玩家血量百分比
-    "能量值": float,      # 玩家能量百分比
-    "战斗": bool,         # 是否在战斗
-    "移动": bool,         # 是否在移动
-    "施法": int,          # 施法状态 (0=未施法, >0=施法中)
-    "引导": int,          # 引导状态
-    "蓄力": int,          # 蓄力层数
-    "目标类型": int,      # 0=无目标, 1-3=敌对, 12-15=友方可驱散
-    "目标距离": int,      # 到目标距离（码）
-    "目标生命值": float,  # 目标血量百分比
+    "生命值": float,      # 玩家血量%
+    "能量值": float,      # 玩家能量%
+    "战斗": bool,
+    "移动": bool,
+    "目标类型": int,      # 0=无, 1-3=敌对, 12-15=友方可驱散
+    "目标距离": int,      # 码
+    "目标生命值": float,
     "爆发开关": int,      # 0/1
     "AOE开关": int,       # 0=自动, 1=单体
     "输出模式": int,      # 0=一键辅助, 1=手写逻辑
-    "延迟": int,          # 逻辑延迟标志
-    "敌人人数": int,      # 周围敌人数量
+    "敌人人数": int,
+    "5码敌人": int,       # Cyber Deck 扩展
     "队伍类型": int,      # 0=单人, 1-40=团本, 46=大秘
-    "队伍人数": int,
     "首领战": int,        # Boss ID
-    "难度": int,          # 副本难度
-    "英雄天赋": int,      # 英雄天赋编号
-    "一键辅助": int,
-    "法术失败": int,      # 0=无失败, 1~N=对应 failed_spell_map
-    "spells": { "法术名": 冷却值 },  # 0=就绪, >0=冷却中
-    "驱散开关": int,      # 0=关闭, 1=开启 (Cyber_Deck 扩展)
-    "group": {
-        "1": { "生命值": float, "驱散": int, "角色": int, ... },
-        ...
-    }
+    "难度": int,
+    "英雄天赋": int,
+    "法术失败": int,
+    "驱散开关": int,      # Cyber Deck 扩展
+    "spells": { "法术名": 冷却值 },  # 0=就绪
+    "group": { "1": { "生命值": float, "驱散": int, ... }, ... }
 }
 ```
 
----
+### 关键约定
 
-## 九、关键约定
-
-1. **像素索引**：config.yml 中定义的索引直接对应屏幕顶部第 N 个像素的 G 通道值
-2. **法术失败**：`法术失败` 状态值 1~N 对应 `failed_spell_map` 表中的法术，值为 0 表示无失败
-3. **目标类型**编码：
-   - 0 = 无目标
-   - 1~3 = 敌对（可攻击）
-   - 12 = 友方有魔法 debuff
-   - 13 = 友方有疾病 debuff
-   - 14 = 诅咒（视职业而定）
-   - 15 = 友方有毒素 debuff
-4. **队伍类型**编码：0=单人, 1-40=团本(人数), 46=大秘
-5. **冷却值**：0 = 就绪，1~254 = 冷却中（近似秒数），255 = 不存在/不可用
-6. **英雄天赋**：1/2/3 对应三个英雄天赋树（具体名称见 config.lua 的 `heroTalents` 表）
-7. **Boss ID**：0 = 未战斗，1~13 = 团本Boss，51~79 = 大秘Boss
-8. **职业ID**：1=战士, 2=圣骑士, 3=猎人, 4=盗贼, 5=牧师, 6=死亡骑士, 7=萨满, 8=法师, 9=术士, 10=武僧, 11=德鲁伊, 12=恶魔猎手, 13=唤魔师
+| 概念 | 说明 |
+|------|------|
+| 冷却值 | 0=就绪, 1~254=冷却中(秒), 255=不可用 |
+| 目标类型 | 0=无, 1-3=敌对, 12-15=友方可驱散 |
+| 队伍类型 | 0=单人, 1-40=团本, 46=大秘 |
+| 职业ID | 1=战士 2=圣骑 3=猎人 4=盗贼 5=牧师 6=DK 7=萨满 8=法师 9=术士 10=武僧 11=德 12=DH 13=唤魔师 |
 
 ---
 
-## 十、Cyber_Deck 覆盖机制
+## 九、Cyber Deck 扩展功能
 
-### Lua 端覆盖
+### Lua 端
 
-Cyber_Deck 的 Lua 文件在主插件之后加载，通过以下方式覆盖：
+| 文件 | 功能 | 说明 |
+|------|------|------|
+| `core/core.lua` | `SwitchDispel` | 驱散开关 |
+| `main.lua` | `updatePlayerConfig` | 驱散开关像素初始化 |
+| `main.lua` | `updateEnemyCount` | 5码姓名版敌人计数 |
+| `main.lua` | `updateUnitCastingOrChannelingInfo` | 修复焦点引导报错 |
+| `class/Paladin.lua` | `ClassBlocks[1]` | 追加驱散开关/5码敌人像素块 |
+| `class/Paladin.lua` | `MacrosList.staticSpells` | 焦点施法宏 |
+| `core/quickbutton.lua` | `InitQuickToggleButton` | 四按钮面板 |
 
-1. **保存原始函数引用**：`local origOnUpdate = F.OnUpdate`
-2. **覆盖函数**：`function F:OnUpdate(elapsed) ... origOnUpdate(self, elapsed) end`
-3. **调用原始函数**：在覆盖函数末尾调用 `origXxx(self, ...)`
+### Python 端
 
-已实现的覆盖：
-
-| 文件 | 覆盖函数 | 说明 |
-|------|---------|------|
-| `init.lua` | `F:OnEnable` | 进入世界时重新初始化（守卫防重复，仅执行一次） |
-| `main.lua` | `F:updatePlayerConfig` | 初始化时写入驱散开关像素 |
-| `main.lua` | `F:updateEnemyCount` | 追加 5 码内姓名版敌人计数 |
-| `main.lua` | `F:updateUnitCastingOrChannelingInfo` | 修复焦点引导报错（pcall 防崩） |
-| `core\core.lua` | `F:SwitchDispel` | 驱散开关（纯扩展，更新像素同步） |
-| `class\Paladin.lua` | `Fuyutsui.ClassBlocks[1]` | 追加驱散开关/5码敌人像素块 |
-| `class\Paladin.lua` | `Fuyutsui.MacrosList.staticSpells` | 审判/震击用焦点目标 + 正义盾击用玩家自己 |
-| `core\quickbutton.lua` | `F:InitQuickToggleButton` | 隐藏原按钮，创建四按钮可拖拽面板 |
-
-### Python 端覆盖
-
-通过 `overrides.py` 实现：
-
-1. **模块级替换**：`import_with_override(module_name)` 优先从 Cyber_Deck 加载同名模块
-2. **配置深度合并**：Monkey-patch `utils.load_config()` 和 `utils.load_keymap()`
-3. **逻辑包装**：覆盖模块先 `importlib.import_module` 加载原始模块，包装后暴露同名函数
-
-已实现的覆盖：
-
-| 文件 | 覆盖内容 |
-|------|---------|
-| `laoer/overrides.py` | config 深度合并 + keymap 合并 + 模块覆盖加载 |
-| `laoer/config.yml` | 追加驱散开关/5码敌人字段（Holy专精 step 48/49） |
-| `laoer/class/paladin_logic.py` | 驱散开关 + 目标类型绕过（友方目标配合@focustarget）+ 5豆正义盾击5码敌人判断 + 制裁之锤固定按键 |
+| 文件 | 内容 |
+|------|------|
+| `Arasaka/config.yml` | Holy 专精追加驱散开关(step 48) + 5码敌人(step 49) |
+| `Arasaka/class/paladin_logic.py` | 驱散开关 + Holy进攻优化 + 正义盾击条件判断 + 制裁之锤 |
 
 ---
 
-## 十一、驱散开关机制详解
+## 十、圣骑士定制详解
 
-Cyber_Deck 新增的驱散开关是跨越 Lua/Python 双层的功能：
+### 驱散开关（Lua + Python 双层）
 
-### Lua 端（存储 + 显示）
-- `class/Paladin.lua`：在神圣专精的 `ClassBlocks` 中添加 `"驱散开关"` 像素块
-- `core/core.lua`：
-  - `SwitchDispel()` — 切换 0/1，写入 `db.char.dispel`，更新像素块
-  - `updatePlayerConfig()` — 覆盖原函数，初始化时读取并显示
-- `core/quickbutton.lua`：四按钮面板中添加"驱散"按钮
+- **Lua**：`SwitchDispel()` 切换 0/1，写入像素块 + SavedVariables
+- **Python**：关闭时临时移除 group 中驱散字段 → 原始逻辑跳过队友驱散 → 恢复字段
+- 目标驱散不受影响（依赖 `目标类型`，不依赖 group）
 
-### Python 端（决策拦截）
-- `laoer/class/paladin_logic.py`：
-  - 覆盖 `run_paladin_logic`
-  - 驱散开关关闭时，**调用前**临时移除 `group` 中所有单位的 `"驱散"` 字段
-  - 原始逻辑中 `get_unit_with_dispel_type()` 找不到可驱散单位 → `elif` 链自然跳过队友驱散
-  - 调用完原始逻辑后，恢复被移除的驱散字段
-  - **目标驱散不受影响**（只依赖 `目标类型`，不依赖 group 数据）
+### Holy 进攻优化
 
----
+- **MacrosList**：审判/震击 → `[@focustarget,harm][harm]`，正义盾击 → `[@player]`
+- **目标类型绕过**：友方目标时强制设为 2（敌方），配合 `@focustarget` 实现"选中友方治疗，自动打焦点目标"
+- **正义盾击条件**：5豆 + `5码敌人 >= 1` 才施放
 
-## 十二、Holy 专精进攻覆盖机制
+### 四按钮面板
 
-Cyber_Deck 为神圣专精的进攻技能做了三处覆盖：
-
-### 1. MacrosList 覆盖（`class/Paladin.lua`）
-
-覆盖了审判、神圣震击、正义盾击的宏文本：
-
-| 索引 | 技能 | 原宏 | 覆盖后 |
-|------|------|------|--------|
-| 6 | 审判 | `审判` | `[@focustarget,harm,nodead][harm,nodead]审判` |
-| 10 | 正义盾击 | `正义盾击` | `[@player]正义盾击` |
-| 14 | 神圣震击 | `神圣震击` | `[@focustarget,harm,nodead][harm,nodead]神圣震击` |
-
-宏逻辑：
-- 有焦点且焦点目标为敌方 → 打焦点的目标
-- 否则打当前目标（敌方）
-- 正义盾击始终对玩家施放（玩家中心 AoE，避免切目标）
-
-### 2. 目标类型绕过（`laoer/class/paladin_logic.py`）
-
-Holy 专精下，当目标是友方（`目标类型 >= 11`）时，强制将 `目标类型` 设为 2（敌方），使原始逻辑中的 `1 <= 目标类型 <= 3` 条件通过。配合宏的 `@focustarget` 实现"选中友方治疗，自动对焦点目标输出"的工作流。
-
-- 目标为友方 → 绕过目标类型判断
-- 目标为敌方 → 不干预（原始判断自然通过）
-- 无目标 → 不干预（原始判断自然失败，避免空转）
-
-### 3. 正义盾击 5 码判断（Lua + Python 双层）
-
-**Lua 端**（`main.lua`）：`updateEnemyCount` 包装后追加 5 码内姓名版敌人计数，写入 `5码敌人` 像素块。
-
-**Python 端**：5 豆时检查 `5码敌人 >= 1`，有则强制 `目标距离 = 1` 使 `目标距离 <= 5` 条件通过；无则让原判断自然失败（不浪费 GCD 对空气打盾击）。
-
-**像素块配置**（`laoer/config.yml`）：Holy 专精 step 49 注册 `5码敌人` 字段。
+| 按钮 | 功能 |
+|------|------|
+| 爆发 | 切换爆发开关 |
+| 自动/单体 | 切换 AOE 模式 |
+| 逻辑/辅助 | 切换输出模式 |
+| 驱散 | 切换驱散开关 |
 
 ---
 
-## 十三、四按钮面板（quickbutton.lua 覆盖）
-
-覆盖 `F:InitQuickToggleButton`，隐藏原始单按钮，创建可拖拽四按钮面板：
-
-| 按钮 | 功能 | 对应函数 |
-|------|------|---------|
-| 爆发 | 切换爆发开关 | `F:SwitchCooldown()` |
-| 自动/单体 | 切换 AOE 模式 | `F:SwitchAoeMode()` |
-| 逻辑/辅助 | 切换输出模式 | `F:SwitchDpsMode()` |
-| 驱散 | 切换驱散开关 | `F:SwitchDispel()` |
-
-特性：
-- 可拖拽，位置持久化到 `db.char.quickButtonCX/Y`
-- 右键点击按钮进入按键绑定模式
-- `switchButtonRegistry` 表管理所有按钮
-
----
-
-## 十四、按键发送机制
+## 十一、按键发送机制
 
 Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 | 模式 | 说明 |
 |------|------|
-| `switch` | 模拟按键按下+释放（默认） |
-| `click` | 模拟鼠标点击 |
-| `hold` | 按住不放（用于持续施法） |
-
-按键映射查找：`get_hotkey(unit, spell)` → 从合并后的 keymap 中查找 `(单位, 技能)` 对应的按键字符串。
+| `switch` | 按下+释放（默认，适合瞬发） |
+| `click` | 鼠标点击 |
+| `hold` | 按住不放（持续施法/引导） |
 
 ---
 
-## 十五、添加新职业逻辑的步骤
+## 十二、添加新职业逻辑
 
 ### Lua 端
 
-1. 创建 `class/NewClass.lua`，定义 `Fuyutsui.ClassBlocks[classId]` 表
-2. 在 `Fuyutsui.toc` 中添加 `class\NewClass.lua`
-3. 在 `core\config.lua` 的 `spellsList` 中添加该职业的法术 ID → index 映射
-4. 在 `core\config.lua` 的 `heroTalents` 中添加英雄天赋映射
+1. 创建/编辑 `class/NewClass.lua`，定义 `Fuyutsui.ClassBlocks[classId]`
+2. 在 `core/config.lua` 的 `spellsList` 中添加法术映射
+3. 在 `Cyber_Deck.toc` 中注册文件
 
 ### Python 端
 
 1. 创建 `Arasaka/class/newclass_logic.py`，实现 `run_newclass_logic(state_dict, spec_name)`
-2. 按 config.yml 自动发现（`keymap` 字段 → `xxx.yml` → `xxx_logic` 模块名），或通过 `_FALLBACK_ID` 兜底映射
-3. 在 `Arasaka/config.yml` 中对应职业ID下添加 `keymap: "newclass.yml"` 字段
-4. 在 `Arasaka/keymap/` 目录创建 `newclass.yml` 定义按键映射
-
-### Cyber_Deck 端（可选）
-
-1. 创建 `class/NewClass.lua` 扩展像素块
-2. 创建 `laoer/class/newclass_logic.py` 覆盖逻辑
+2. 在 `Arasaka/config.yml` 中添加 `keymap: "newclass.yml"`
+3. 创建 `Arasaka/keymap/newclass.yml`
 
 ---
 
-## 十六、开发规范（必读）
-
-> 以下规则在 Cyber_Deck 中添加任何新功能时**必须遵守**。
+## 十三、开发规范
 
 ### 通用规则
 
-1. **不修改主插件源码**：所有功能通过覆盖机制实现，绝不直接编辑 `Arasaka/` 下的文件
-2. **中文命名**：像素块名称、状态字段、GUI 文本统一使用中文（如 `"驱散开关"`、`"生命值"`）
-3. **保存原始引用**：覆盖任何函数前必须先保存：`local origXxx = F.Xxx`
-4. **调用原始函数**：覆盖函数末尾必须调用 `origXxx(self, ...)` 保留原有行为
-5. **文件层级对应主插件**：Cyber_Deck 的覆盖文件应与主插件保持同名同路径（如覆盖 `core/block.lua` → 创建 `core/block.lua`），新增文件同理
-
-### Lua 端规则
-
-```lua
--- 正确的覆盖模板：
-local F = Fuyutsui
-local origXxx = F.Xxx      -- 1. 保存原始引用
-
-function F:Xxx(...)         -- 2. 覆盖函数
-    -- 新逻辑写在这里
-    return origXxx(self, ...)  -- 3. 调用原始函数
-end
-```
-
-- **像素块写入**：使用 `self:CreatTexture(block, value)`，value 范围 0~1
-- **SavedVariables**：新增持久化数据放在 `F.db.char` 下，需在 `core/core.lua` 中 `RegisterDefaults`
-- **像素索引分配**：新增像素块时索引不能与 config.yml 中已有的冲突，建议从 150+ 开始
-- **TOC 加载顺序**：`init.lua` 最先（覆盖 OnEnable）→ `main.lua`（覆盖 OnUpdate）→ `core/*.lua` → `class/*.lua`
+1. **直接修改**：所有功能直接编辑对应文件
+2. **中文命名**：像素块、状态字段、GUI 文本
+3. **像素索引**：新增从 150+ 开始
+4. **SavedVariables**：新增字段在 `core/core.lua` 的 `defaults.char` 注册
 
 ### Python 端规则
 
-```python
-# 正确的覆盖模板：
-import importlib
-_orig = importlib.import_module(f"class.paladin_logic")
-_orig_run = _orig.run_paladin_logic
-
-def run_paladin_logic(state_dict, spec_name):
-    # 新逻辑（拦截/修改/扩展）
-    result = _orig_run(state_dict, spec_name)
-    return result
-```
-
-- **配置合并**：`laoer/config.yml` 会自动与主配置深度合并，只需写差异部分
-- **按键映射**：`laoer/keymap/` 中的条目会追加到已加载的键位映射
-- **职业逻辑返回值**：必须返回 `(action_hotkey, current_step, unit_info)` 三元组，无操作时 `action_hotkey = None`
-- **工具函数**：优先使用 `utils.py` 中的 `get_hotkey()`、`get_lowest_health_unit()` 等，不要重复造轮子
-
-### 添加新功能的检查清单
-
-| 步骤 | 说明 |
-|------|------|
-| 1 | 读 README.md 了解完整架构 |
-| 2 | 确定是纯 Lua 功能还是需要 Lua + Python 双端配合 |
-| 3 | 纯 Lua：按覆盖模板写代码，放入对应文件（帧相关→main.lua，初始化→init.lua，开关→core/core.lua） |
-| 4 | 双端：Lua 端添加像素块编码，Python 端在 `overrides.py` 注册覆盖模块 |
-| 5 | 更新 `Cyber_Deck.toc`（如新增文件） |
-| 6 | 更新本 README.md 对应章节 |
+- 职业逻辑返回 `(action_hotkey, current_step, unit_info)` 三元组
+- 优先使用 `utils.py` 工具函数
+- 修改后点击 GUI"重载"生效
 
 ### 常见陷阱
 
-- **elif 链无法回退**：原始职业逻辑的 `if/elif` 是一次性执行的，事后修改返回值无法让逻辑继续走下一个分支。如需跳过某个优先级，必须在调用前修改 `state_dict` 中的数据
-- **线程安全**：Python 端按键检测和逻辑执行在不同线程，访问 `_state_dict` 时注意 `_state_lock`
-- **团本性能**：遍历队伍成员的轮询逻辑在 40 人团时开销大，建议加实例类型判断（`instanceType ~= "raid"`）
-- **WoW API 限制**：`UnitHealthPercent` 等查询 API 有客户端频率限制，不适合每帧调用，应使用 `OnUpdate` + 时间累加器节流
-- **覆盖模块的本地绑定**：`overrides.py` 通过 `utils.load_config = _patched_load_config` 做 monkey-patch，但如果其他模块已经用 `from utils import load_config` 导入了，那个本地引用不会更新。被覆盖的模块内部应使用 `import utils; utils.load_config()` 而非 `from utils import load_config`，否则调用的是原始函数
-- **Keymap 覆盖只追加不替换**：`laoer/keymap/` 中的条目会以新 ID 追加到已有映射，不会按技能名替换已有条目。如果主 keymap 中某个技能已存在，覆盖条目实际上永远不会被 `get_hotkey()` 命中
-- **Config/Keymap 缓存不同步**：项目中 `GetPixels.py`、`utils.py`、`logic_gui*.py` 各有独立的 config 缓存。手动修改 `config.yml` 或 `keymap/*.yml` 后，仅点"重载"按钮才能使所有缓存一致地刷新
-- **`__file__` 路径注意事项**：直接运行 Python 源码时 `Path(__file__).parent` 指向脚本所在目录，读写外部文件（如 `gui_window_state.json`、`class/` 目录）需确保路径正确
-- **TOC 加载顺序敏感**：Cyber_Deck 的 TOC 文件顺序决定了 Lua 覆盖的执行顺序。`init.lua` 必须最先加载（覆盖 OnEnable），`main.lua` 其次（覆盖 OnUpdate 相关函数），然后是 `core/*.lua`，最后是 `class/*.lua`。顺序错误会导致覆盖失效或运行时错误
-- **SavedVariables 命名空间**：Cyber_Deck 的 SavedVariables 存储在 `FuyutsuiADB` 中（与主插件共享），新增持久化字段需在 `core/core.lua` 的 `defaults.char` 中注册，否则重载后数据丢失
-- **像素块索引冲突**：新增像素块时，索引不能与 `config.yml` 中已有的冲突。主插件使用的索引范围约为 1~100+，Cyber_Deck 扩展建议从 150+ 开始分配
-- **Python 模块缓存**：`importlib.import_module` 会缓存已加载的模块。热重载时需先 `importlib.reload()` 原始模块，再重新加载覆盖模块，否则覆盖模块中的 `_orig` 引用仍指向旧版本
+- **elif 链无法回退**：跳过某优先级需在调用前修改 `state_dict`
+- **线程安全**：访问 `_state_dict` 注意 `_state_lock`
+- **TOC 顺序**：`core/*.lua` → `class/*.lua` → `main.lua` → `gui.lua`
+- **模块缓存**：热重载需 `importlib.reload()`
 
 ---
 
-## 十七、调试技巧
+## 十四、调试技巧
 
-- **Lua 像素调试**：`/fu gui` 打开像素块调试界面，查看所有像素索引的名称和当前值
-- **Lua 斜杠命令**：`/fu message 测试消息` — 向聊天框发送测试文本
-- **Lua 秘密值**：`/script SetTestSecret(0)` 关闭秘密值限制
-- **Lua 事件监控**：`/etrace` 或使用 `/eventtrace` 监控特定事件的触发
-- **Python 像素颜色**：`Arasaka/other/GetRGB.py` 获取鼠标位置像素 RGB 值
-- **Python 热重载**：GUI 中的"重载"按钮重新加载所有模块（先 reload 原始模块，再重载覆盖模块）
-- **Python 信息调试**：`Arasaka/other/GetInfo.py` 获取完整 state_dict 并打印
-- **Python 无 GUI 模式**：`Arasaka/logic_nogui.py` 可在终端直接运行，不依赖 GUI，适合调试职业逻辑
-- **Lua 宏重建**：`/fu macro rebuild` 手动重建所有动态宏（修改 MacrosList 后需要）
+- `/fu gui` — 像素块调试界面
+- `/fu message 文本` — 聊天框测试
+- `/script SetTestSecret(0)` — 关闭秘密值限制
+- `/fu macro rebuild` — 手动重建宏
+- `Arasaka/other/GetRGB.py` — 获取像素 RGB
+- `Arasaka/other/GetInfo.py` — 打印 state_dict
+- GUI"重载"按钮 — 热重载 Python 模块
 
 ---
 
-## 十八、快速参考（AI 速查）
+## 十五、快速参考（AI 速查）
 
-### 关键文件定位指南
+### 关键文件定位
 
 | 需求 | 文件 |
 |------|------|
-| 添加 Lua 覆盖（帧循环相关） | `Cyber_Deck/main.lua` |
-| 添加 Lua 覆盖（初始化） | `Cyber_Deck/init.lua` |
-| 添加 Lua 覆盖（开关/配置） | `Cyber_Deck/core/core.lua` |
-| 添加 Lua 像素块扩展 | `Cyber_Deck/class/<职业名>.lua` |
-| 添加 Python 职业逻辑 | `Arasaka/class/<职业>_logic.py` |
-| 覆盖 Python 职业逻辑 | `laoer/class/<职业>_logic.py` |
-| 添加按键映射 | `Arasaka/keymap/<职业>.yml` |
-| 覆盖按键映射 | `laoer/keymap/<职业>.yml` |
-| 添加像素块配置 | `laoer/config.yml`（只写差异部分） |
-| 注册覆盖模块 | `laoer/overrides.py` |
-| 添加 SavedVariables 字段 | `Cyber_Deck/core/core.lua` 的 `defaults.char` |
-
-### 覆盖模板速查
-
-**Lua 覆盖**：
-```lua
-local F = Fuyutsui
-local origXxx = F.Xxx           -- 1. 保存原始引用
-function F:Xxx(...)             -- 2. 覆盖函数
-    -- 新逻辑
-    return origXxx(self, ...)   -- 3. 调用原始函数
-end
-```
-
-**Python 覆盖**：
-```python
-import importlib
-_orig = importlib.import_module("class.paladin_logic")
-_orig_run = _orig.run_paladin_logic
-
-def run_paladin_logic(state_dict, spec_name):
-    # 拦截/修改 state_dict
-    result = _orig_run(state_dict, spec_name)
-    return result
-```
+| Lua 帧循环/事件处理 | `Cyber_Deck/main.lua` |
+| Lua 开关/配置 | `Cyber_Deck/core/core.lua` |
+| Lua 像素块扩展 | `Cyber_Deck/class/<职业>.lua` |
+| Python 职业逻辑 | `Arasaka/class/<职业>_logic.py` |
+| 按键映射 | `Arasaka/keymap/<职业>.yml` |
+| 像素块配置 | `Arasaka/config.yml` |
+| SavedVariables | `Cyber_Deck/core/core.lua` 的 `defaults.char` |
 
 ### 像素编码速查
 
 | 概念 | 说明 |
 |------|------|
-| 像素位置 | 屏幕顶部 255 个像素，宽度 = 屏幕宽度/255 |
-| G 通道 | 索引号 (1~255)，标识数据含义 |
-| B 通道 | 数值 (0~1)，通过颜色曲线映射 |
+| G 通道 | 索引号 (1~255) |
+| B 通道 | 数值 (0~1) |
 | 冷却值 | 0=就绪, 1~254=冷却中(秒), 255=不可用 |
-| 写入像素 | `self:CreatTexture(block, value)` (value: 0~1) |
+| 写入像素 | `self:CreatTexture(block, value)` |
 
 ### 线程模型速查
 
 | 线程 | 间隔 | 职责 |
 |------|------|------|
-| 按键检测 | 50ms (`TOGGLE_INTERVAL`) | 轮询绑定按键 |
-| 逻辑执行 | 200ms (`LOGIC_INTERVAL`) | 扫描→决策→发送 |
-| GUI 刷新 | 100ms (`GUI_UPDATE_MS`) | 更新状态面板 |
+| 按键检测 | 50ms | 轮询绑定按键 |
+| 逻辑执行 | 200ms | 扫描→决策→发送 |
+| GUI 刷新 | 100ms | 更新状态面板 |
 
 ### 职业逻辑返回值
 
 ```python
 return (action_hotkey, current_step, unit_info)
 # action_hotkey: 按键字符串 或 None（无操作）
-# current_step: 步骤描述字符串（GUI 显示）
+# current_step: 步骤描述（GUI 显示）
 # unit_info: 附加信息字典（GUI 显示）
 ```
