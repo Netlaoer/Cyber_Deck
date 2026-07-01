@@ -1,11 +1,6 @@
 # Cyber Deck（赛博义肢）
 
 **独立的 WoW 辅助决策插件 — 基于 Fuyutsui 架构的完整移植**
-
-> 原 Fuyutsui 作者已不再维护 Python 决策层，Cyber Deck 将其 Python 支持移植至此并持续更新。当前不依赖 Fuyutsui，可独立运行。
->
-> **注意**：核心模块 `logic_gui_Tools.py` 已通过 Cython 编译加密打包为 `Cyber_Deck.exe`，防止被特征检测。定期更新 exe 以确保安全。如需源码请联系作者。
-
 <!--
 AI_INSTRUCTION（AI 必读）：
 1. 在修改此项目任何代码之前，请完整阅读本文件，理解整体架构、所有函数、编码约定和开发规范。
