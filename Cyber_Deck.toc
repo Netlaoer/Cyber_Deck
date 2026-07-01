@@ -1,13 +1,53 @@
 ## Interface: 120000, 120001, 120005
+
 ## Title: Cyber Deck|cFFC79C6E 赛博义肢|r
 ## Version: 0.0.1
 ## Author: Netlaoer
-## Dependencies: Fuyutsui
-## Notes: Fuyutsui 功能扩展 — 赛博义肢
+## IconTexture: Interface\AddOns\Cyber_Deck\core\Spell_Misc_EmotionHappy.blp
+## OptionalDeps: LibRangeCheck-3.0, Ace3
+## SavedVariables: FuyutsuiADB
+## X-Embeds: Ace3
 
-init.lua
+## Category-enUS: Combat
+## Category-deDE: Kampf
+## Category-esES: Combate
+## Category-esMX: Combate
+## Category-frFR: Combat
+## Category-itIT: Combattimento
+## Category-koKR: 전투
+## Category-ptBR: Combate
+## Category-ruRU: Бой
+## Category-zhCN: 战斗
+## Category-zhTW: 戰鬥
+
+## Notes-zhCN: 将信息转化为像素显示在屏幕顶部 — 赛博义肢
+
+## X-Category: Combat
+
+embeds.xml
+Libs/LibRangeCheck-3.0/LibRangeCheck-3.0.lua
+
+core/core.lua
+core/quickbutton.lua
+core/config.lua
+core/block.lua
+core/macro.lua
+core/keybinds.lua
+core/auras.lua
+
+class/Warrior.lua
+class/Paladin.lua
+class/Rogue.lua
+class/Hunter.lua
+class/Priest.lua
+class/DeathKnight.lua
+class/Shaman.lua
+class/Mage.lua
+class/Warlock.lua
+class/Monk.lua
+class/Druid.lua
+class/DemonHunter.lua
+class/Evoker.lua
+
 main.lua
-core\core.lua
-class\Paladin.lua
-core\config.lua
-core\quickbutton.lua
+gui.lua

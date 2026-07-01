@@ -1,8 +1,11 @@
 -- ============================================================================
--- 覆盖 Fuyutsui quickbutton.lua — 面板替代
+-- 四按钮可拖动面板 — 合并自 Cyber_Deck
 -- ============================================================================
 
+local addon, ns = ...
 local F = Fuyutsui
+
+local DRAG_THRESHOLD = 10
 
 local switchButtonRegistry = {}
 local pendingBindButton = nil
@@ -50,7 +53,7 @@ local function createSwitchButton(opt)
     btn:SetScript("OnClick", function(self, mouseBtn)
         if mouseBtn == "RightButton" then
             pendingBindButton = name
-            print("|cFFFFD700Fuyutsui|r: 按下要绑定的按键 (ESC取消), 不支持修饰键和组合")
+            print("|cFFFFD700[Cyber Deck]|r: 按下要绑定的按键 (ESC取消), 不支持修饰键和组合")
             bindEditBox:Show()
             bindEditBox:SetFocus()
             return
@@ -91,8 +94,7 @@ local function createSwitchButton(opt)
     return btn
 end
 
--- 覆盖 InitQuickToggleButton：隐藏原按钮，创建新面板
-function F:InitQuickToggleButton()
+function Fuyutsui:InitQuickToggleButton()
     -- 注册面板位置字段到 AceDB，确保重载后持久化
     if self.db then
         self.db:RegisterDefaults({
@@ -190,11 +192,11 @@ function F:InitQuickToggleButton()
         end
         if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL"
             or key == "LALT" or key == "RALT" then
-            print("|cFFFFD700Fuyutsui|r: 不支持修饰键，请只按普通键")
+            print("|cFFFFD700[Cyber Deck]|r: 不支持修饰键，请只按普通键")
             return
         end
         if IsShiftKeyDown() or IsControlKeyDown() or IsAltKeyDown() then
-            print("|cFFFFD700Fuyutsui|r: 不支持修饰键组合，请只按普通键")
+            print("|cFFFFD700[Cyber Deck]|r: 不支持修饰键组合，请只按普通键")
             return
         end
         local btnName = pendingBindButton
@@ -205,14 +207,14 @@ function F:InitQuickToggleButton()
         if key == "ESCAPE" then
             if bindBtn then ClearOverrideBindings(bindBtn) end
             boundKeys[btnName] = nil
-            print("|cFFFFD700Fuyutsui|r: 快捷键已清除")
+            print("|cFFFFD700[Cyber Deck]|r: 快捷键已清除")
             return
         end
         if not bindBtn then return end
         ClearOverrideBindings(bindBtn)
         SetOverrideBindingClick(bindBtn, false, key, btnName .. "Bind", "LeftButton")
         boundKeys[btnName] = key
-        print("|cFFFFD700Fuyutsui|r: " .. key .. " 已绑定")
+        print("|cFFFFD700[Cyber Deck]|r: " .. key .. " 已绑定")
     end)
     bindEditBox:SetScript("OnEscapePressed", function(self)
         if pendingBindButton then
@@ -223,11 +225,11 @@ function F:InitQuickToggleButton()
             local bindBtn = bindBtnRegistry[btnName]
             if bindBtn then ClearOverrideBindings(bindBtn) end
             boundKeys[btnName] = nil
-            print("|cFFFFD700Fuyutsui|r: 快捷键已清除")
+            print("|cFFFFD700[Cyber Deck]|r: 快捷键已清除")
         end
     end)
 
-    -- 三个按钮
+    -- 四个按钮
     local btnCD = createSwitchButton({
         name = "FuyutsuiCDButton",
         parent = panelFrame,
@@ -299,4 +301,12 @@ function F:InitQuickToggleButton()
             updateSwitchButtons()
         end
     end)
+end
+
+function Fuyutsui:RefreshQuickToggleAppearance()
+    -- 保留兼容性（原旧版按钮外观刷新，新版面板不需要）
+end
+
+function Fuyutsui:UpdateQuickToggleVisibility()
+    -- 保留兼容性（新版面板由自己的显示/隐藏按钮控制）
 end

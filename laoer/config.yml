@@ -1,4 +1,0 @@
-2:
-  1:
-    驱散开关: {step: 48, type: "int"}
-    5码敌人: {step: 49, type: "int"}

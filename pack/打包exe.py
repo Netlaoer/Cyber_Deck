@@ -20,7 +20,7 @@ PY_FILE = ROOT / "logic_gui_Tools.py"
 PYD_NAME = "Cyber_Deck"  # .pyd 模块名
 PYD_FILE = ROOT / "pack" / f"{PYD_NAME}.cp314-win_amd64.pyd"
 LAUNCHER = ROOT / "pack" / "launcher.py"
-ICON = ROOT / "laoer" / "other" / "icon.ico"
+ICON = ROOT / "Arasaka" / "other" / "icon.ico"
 
 
 # ═══════════════════════════════════════════
@@ -199,7 +199,7 @@ def build_exe():
         "--hidden-import=mss",
         "--hidden-import=customtkinter",
         "--add-binary", f"{PYD_FILE}{os.pathsep}.",
-        "--add-data", f"{ICON}{os.pathsep}laoer/other",
+        "--add-data", f"{ICON}{os.pathsep}Arasaka/other",
         str(LAUNCHER),
     ]
 
