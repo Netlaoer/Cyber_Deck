@@ -113,8 +113,8 @@ state:
       美德道标: {step: 45, type: "int" }
       大红冷却: {step: 46, type: "int" }
       延迟: {step: 47, type: "int" }
-      驱散开关: {step: 48, type: "int" }
-      5码敌人: {step: 49, type: "int" }
+    驱散开关: {step: 48, type: "int" }
+    5码敌人: {step: 49, type: "int" }
     group:
       start: 70
       num: 6
