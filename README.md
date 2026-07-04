@@ -66,7 +66,7 @@ Cyber_Deck/
 │   ├── class/              # 职业逻辑模块（14个.py，13职业 + __init__）
 │   │   ├── paladin_logic.py   # 圣骑士（含驱散开关+Holy进攻+5码判断）
 │   │   └── ...             # 其余12个职业
-│   ├── keymap/             # 按键映射（14个.yml）
+│   ├── keymap/             # 按键映射（14个.yml：1个默认 keymap.yml + 13个职业专用）
 │   └── other/              # 调试工具 + icon.ico
 │
 └── pack/                   # 打包工具（Cython + PyInstaller + UPX → exe）
@@ -154,20 +154,36 @@ char = { level, aoeMode, cooldowns, dpsMode, delay, potion,
 |------|---------|------|
 | `F:OnInitialize()` | core.lua | AceDB 初始化，注册 `/fu` 命令 |
 | `F:OnEnable()` | core.lua | 获取专精、加载 blocks、注册事件 |
-| `F:SwitchCooldown()` | core.lua | 切换爆发开关 |
-| `F:SwitchAoeMode()` | core.lua | 切换 AOE 模式 |
-| `F:SwitchDpsMode()` | core.lua | 切换输出模式 |
-| `F:SwitchDispel()` | core.lua | 切换驱散开关 |
+| `F:SwitchCooldown()` | core.lua | 打印爆发状态+写入像素（切换逻辑在 SlashCommand） |
+| `F:SwitchAoeMode()` | core.lua | 打印 AOE 模式+写入像素（切换逻辑在 SlashCommand） |
+| `F:SwitchDpsMode()` | core.lua | 打印输出模式+写入像素（切换逻辑在 SlashCommand） |
+| `F:SwitchDispel()` | core.lua | 切换驱散开关（含切换逻辑+打印+像素写入） |
 | `F:OnUpdate(elapsed)` | main.lua | 帧循环（高频+低频轮询） |
 | `F:updatePlayerConfig()` | main.lua | 初始化驱散开关等像素 |
 | `F:updateEnemyCount()` | main.lua | 敌人计数（含5码姓名版） |
-| `CreatTexture(block, value)` | main.lua | 写入像素块 |
+| `CreatTexture(index, value)` | core/block.lua | 写入像素块（参数为索引号+数值） |
 | `creatColorCurveScaling(b)` | main.lua | 非线性颜色曲线编码 |
 | `InitQuickToggleButton()` | quickbutton.lua | 四按钮面板 |
 | `updateAura()` | auras.lua | 光环倒计时 |
 | `updateAuraBlocks()` | auras.lua | 光环像素更新 |
 
-**斜杠命令**：`/fu cd/aoemode/dpsmode/potion/delay/gui/macro rebuild/message/help`
+**斜杠命令**：`/fu cd/aoemode/dpsmode/potion/delay/dispel/gui/options/macro rebuild/message/help`
+
+完整命令列表：
+
+| 命令 | 说明 |
+|------|------|
+| `/fu cd` / `cd on` / `cd off` | 切换/开启/关闭爆发 |
+| `/fu aoemode` / `auto` / `aoe` | 切换/自动/单体 AOE 模式 |
+| `/fu dpsmode` / `manual` / `assistant` | 切换/手写逻辑/一键辅助 |
+| `/fu potion` / `on` / `off` | 切换/开启/关闭爆发药水 |
+| `/fu delay [秒]` | 临时延迟逻辑（默认 1 秒） |
+| `/fu dispel` / `on` / `off` | 切换/开启/关闭驱散 |
+| `/fu gui` | 打开像素块调试界面 |
+| `/fu options` / `config` | 打开 Ace3 选项界面 |
+| `/fu macro rebuild` | 手动重建动态宏 |
+| `/fu message <文本>` | 聊天框测试 |
+| `/fu help` | 打印帮助信息 |
 
 ---
 
@@ -188,7 +204,8 @@ char = { level, aoeMode, cooldowns, dpsMode, delay, potion,
 | 函数 | 说明 |
 |------|------|
 | `load_config()` | 加载 config.yml |
-| `load_keymap()` | 加载按键映射 |
+| `load_keymap()` | 加载按键映射（由 `select_keymap_for_class` 动态切换文件） |
+| `select_keymap_for_class(class_id)` | 根据职业 ID 切换对应 keymap 文件 |
 | `get_hotkey(unit, spell)` | 查找按键 |
 | `get_lowest_health_unit(state_dict, threshold)` | 最低血量队友 |
 | `get_unit_with_dispel_type(state_dict, dispel_type)` | 需驱散队友 |
@@ -213,6 +230,10 @@ state_dict = {
     "能量值": float,      # 玩家能量%
     "战斗": bool,
     "移动": bool,
+    "施法": int,          # 施法中
+    "引导": int,          # 引导中
+    "蓄力": int,          # 蓄力中
+    "蓄力层数": int,      # 蓄力层数
     "目标类型": int,      # 0=无, 1-3=敌对, 12-15=友方可驱散
     "目标距离": int,      # 码
     "目标生命值": float,
@@ -228,7 +249,16 @@ state_dict = {
     "法术失败": int,
     "驱散开关": int,      # Cyber Deck 扩展
     "spells": { "法术名": 冷却值 },  # 0=就绪
-    "group": { "1": { "生命值": float, "驱散": int, ... }, ... }
+    "group": {
+        "1": {
+            "生命值": float,     # 血量%
+            "职责": int,         # 坦克/治疗/输出
+            "驱散": int,         # 需要驱散的类型
+            # 职业特定字段如 "永恒之火", "救世道标" 等
+        },
+        ...
+    },
+    "auras": { "光环名": int },  # 光环状态（如 "神圣意志", "圣光灌注"）
 }
 ```
 
@@ -261,8 +291,8 @@ state_dict = {
 
 | 文件 | 内容 |
 |------|------|
-| `Arasaka/config.yml` | Holy 专精追加驱散开关(step 48) + 5码敌人(step 49) |
-| `Arasaka/class/paladin_logic.py` | 驱散开关 + Holy进攻优化 + 正义盾击条件判断 + 制裁之锤 |
+| `Arasaka/config.yml` | Holy(专精1) 追加驱散开关(step 48) + 5码敌人(step 49) + group 块(start:70, num:6)；惩戒(专精3) 含 group(start:70, num:3) |
+| `Arasaka/class/paladin_logic.py` | 驱散开关 + Holy进攻优化 + 正义盾击条件判断 + 制裁之锤 + 专精法术限制 |
 
 ---
 
@@ -273,6 +303,14 @@ state_dict = {
 - **Lua**：`SwitchDispel()` 切换 0/1，写入像素块 + SavedVariables
 - **Python**：关闭时临时移除 group 中驱散字段 → 原始逻辑跳过队友驱散 → 恢复字段
 - 目标驱散不受影响（依赖 `目标类型`，不依赖 group）
+
+### 三专精 config.yml 像素分布
+
+| 专精 | spec ID | 公共 state (step 1-20) | 专精特有 | spells 范围 |
+|------|---------|----------------------|----------|------------|
+| 神圣 | 1 | 锚点~英雄天赋 | 神圣能量(21)~美德道标(29), 爆发开关(30), 驱散开关(48), 5码敌人(49), group(70+) | step 31-47 |
+| 防护 | 2 | 同上 | 神圣能量(21)~圣光之锤(30), 目标距离(31) | step 32-50 |
+| 惩戒 | 3 | 同上 | 神圣能量(21)~目标距离(30), group(70+) | step 31-47 |
 
 ### Holy 进攻优化
 
@@ -347,10 +385,12 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 
 - `/fu gui` — 像素块调试界面
 - `/fu message 文本` — 聊天框测试
-- `/script SetTestSecret(0)` — 关闭秘密值限制
+- `/script SetTestSecret(0)` — 关闭秘密值限制（解锁 8 个 CVar，插件启动时默认调用 `SetTestSecret(1)` 开启限制）
 - `/fu macro rebuild` — 手动重建宏
+- `/fu delay [秒]` — 临时暂停逻辑 N 秒（不写参数默认 1 秒，用于手动插入技能）
 - `Arasaka/other/GetRGB.py` — 获取像素 RGB
 - `Arasaka/other/GetInfo.py` — 打印 state_dict
+- `Arasaka/other/hex_to_decode.py` — 十六进制解码工具
 - GUI"重载"按钮 — 热重载 Python 模块
 
 ---
@@ -376,7 +416,7 @@ Python 通过 `PostMessage(WM_KEYDOWN/WM_KEYUP)` 向 WoW 窗口发送按键：
 | G 通道 | 索引号 (1~255) |
 | B 通道 | 数值 (0~1) |
 | 冷却值 | 0=就绪, 1~254=冷却中(秒), 255=不可用 |
-| 写入像素 | `self:CreatTexture(block, value)` |
+| 写入像素 | `self:CreatTexture(index, value)`  (定义在 core/block.lua) |
 
 ### 线程模型速查
 
